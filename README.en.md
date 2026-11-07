@@ -27,11 +27,11 @@ A theme file can carry more than colors: variable overrides and custom CSS too. 
 </p>
 
 - **Look**: red on near-black, cyan headings, yellow accents; the sidebar, buttons, code blocks and messages become cut-corner frames, with corner brackets on the window and faint scanlines.
-- **Motion**: a slow scan line, a light glitch on hover, a flicker on selection. Everything stops when the system's Reduce motion is on.
+- **Motion**: a slow scan line, a light glitch on hover, a flicker on selection. Everything stops when the system's Reduce motion is on or Prism is saving power.
 - **Install**: download [`cyberpunk-hud.json`](https://github.com/Wildchiken/dsh-prism-skin/releases/latest/download/cyberpunk-hud.json), then in **Settings → Prism → Import & export** click "Choose file…" and "Apply". It lands in My themes under its name, one click away from then on.
 
 > [!NOTE]
-> The frames come from custom CSS that targets the host's internal class names, so a DSH update may break some of them (the colors are unaffected); an updated file fixes that. Dark only. The style is a nod to the cyberpunk genre and is not affiliated with any game or company.
+> The frames come from custom CSS that targets the host's internal class names, so a DSH update may break some of them (the colors are unaffected); an updated file fixes that, and `node scripts/check-theme.mjs` tells you which ones still match on a new host. Dark only. The style is a nod to the cyberpunk genre and is not affiliated with any game or company.
 
 ## Install
 
@@ -64,7 +64,7 @@ flowchart LR
 ```
 
 - **Switching themes swaps the whole bundle**: you get the theme exactly as it ships and your previous changes are cleared (contrast and depth, being personal preferences, are kept).
-- **To keep your changes**, click Save as my theme and give it a name. My themes holds up to 24; hover a card to delete it from the top-right corner (two clicks).
+- **To keep your changes**, click Save as my theme and give it a name. My themes holds up to 24 and can be renamed; hover a card to delete it from the top-right corner (two clicks), with a few seconds to undo.
 - **To go back to the host as it ships**, click Restore defaults: theme, changes and background are all cleared.
 - **Every step is undoable**; hover to preview, click to apply.
 
@@ -83,7 +83,7 @@ flowchart LR
 **Customization**
 - Fonts and sizes (the same setting as General → Fonts) and a corner-radius multiplier.
 - Search every host variable by name and edit it, seeing its current value and which layer it comes from.
-- Custom CSS: up to 8192 characters; `@import` and external `url()` are blocked.
+- Custom CSS: up to 8192 characters; `@import` and external `url()` are blocked. While power saving is on, `body` carries a `data-prism-saving` attribute, so animated themes can stop with `:not([data-prism-saving])`.
 
 **Import & export**
 - A theme file is a small JSON: the color seed, optionally with variable overrides, custom CSS and radius. Importing one adds it to My themes.
@@ -127,7 +127,6 @@ Settings live in `$DSH_HOME/dsh-prism-skin/state.json` (by default `~/.dsh/dsh-p
 - **About 30% of corner radii are out of reach**: about 70% of the host's radii use `--dsw-radius-*` variables and follow the Radius slider; the rest (mostly 1–4px details) are hard-coded in host styles. Prism does not patch them through hashed class names.
 - **Share between desktop apps with the share code**: a share link carries the current address, and the desktop app picks a new port on every launch, so the link will not open on another machine. Copy the share code and paste it into the other person's Import box.
 - **Font changes are not undoable**: fonts and sizes are the host's General settings, outside Prism's undo history; fonts that come with an imported theme file cannot be undone either (the preview says so before you import).
-- **My themes cannot be renamed directly yet**: save under the new name with Save as my theme, then delete the old one. Deleting cannot be undone.
 - **Not yet tested on the desktop app**: GPU use in a real window, automatic power saving on low battery (the battery API was only tested with a simulated battery), and the system file picker for local wallpaper images.
 - **The quick panel cannot jump to settings**: the host has no API for a sidebar plugin to open settings at a given section, so the panel footer is a note.
 - **dream-skin migration is not pixel-identical**: themes are converted to seeds from their base, accent and scheme, and the remaining colors are recomputed with contrast guarantees. Lighter dark bases (such as Nord) come out a little darker.
@@ -145,6 +144,7 @@ npm test                       # unit tests, including size gates and the contra
 npm run build                  # output in lib/
 npm run audit:contrast         # contrast audit per theme and per code scheme
 node scripts/readme-art.mjs    # redraw the README banner and theme overview
+node scripts/check-theme.mjs --host <host dir> --theme themes/cyberpunk-hud.json   # do the theme's frames still match on this host version?
 ```
 
 Smoke tests and screenshots on a real host need a locally installed host (`npm install @deepseek-ai/dsh@<version>`):

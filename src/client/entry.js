@@ -324,8 +324,16 @@ function start(ctx) {
   }
   const reduced = () => savingReason() !== null
 
+  /** 省电时在 body 上标出原因（`data-prism-saving`），主题自带的 CSS 可以据此停掉动画。 */
+  const markSaving = () => {
+    const reason = savingReason()
+    if (reason === null) document.body?.removeAttribute('data-prism-saving')
+    else document.body?.setAttribute('data-prism-saving', reason)
+  }
+
   /** 把一层交给宿主。轮播换图时用系统的视图过渡淡入，只在换图那一下占 GPU。 */
   const applyLayer = (layer, options) => {
+    markSaving()
     const write = () => applyTokens(effectiveTokens(layer, reduced()))
     if (options?.animate === true && !reduced() && motionQuery?.matches !== true && document.visibilityState === 'visible' && typeof document.startViewTransition === 'function') {
       try {
@@ -381,7 +389,13 @@ function start(ctx) {
     }
   }
   applyCss(effectiveCss(core.values()))
-  ctx.effect(() => core.subscribe(() => applyCss(effectiveCss(core.values()))), 'dsh-prism-skin:css')
+  /** 悬停预览时临时换上的 CSS；null 表示没在预览。 */
+  let cssPreview = null
+  const previewCss = (css) => {
+    cssPreview = css
+    applyCss(css ?? effectiveCss(core.values()))
+  }
+  ctx.effect(() => core.subscribe(() => applyCss(cssPreview ?? effectiveCss(core.values()))), 'dsh-prism-skin:css')
   /** @type {Set<{sync: (next: object) => void}>} */
   const storeActions = new Set()
   const scheme = () => ctx.theme.getTheme().active.colorScheme
@@ -451,6 +465,7 @@ function start(ctx) {
 
   // 省电档位可能是别的窗口改的（同步或对账带过来），这时这一层没变，但要换成另一套变量
   let lastSaving = reduced()
+  markSaving()
   ctx.effect(
     () =>
       core.subscribe(() => {
@@ -518,6 +533,7 @@ function start(ctx) {
   const host = {
     core,
     preview,
+    previewCss,
     locale: ctx.locale,
     registerLocale: (ns, dicts) => ctx.effect(() => ctx.locale.register(ns, dicts), `dsh-prism-skin:${ns}`),
     setMainLayer: applyTokens,

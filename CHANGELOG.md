@@ -4,6 +4,30 @@
 
 All versions up to 0.3.1 were never published; they were used only for local testing and on the desktop app.
 
+## [0.6.0] - 2026-11-07
+
+### 新增
+
+- 「我的主题」可以改名：选中后在设置页顶上点「改名」。
+- 删除「我的主题」后，画廊上方会出现「撤销」，8 秒内点一下就放回原位（删之前正在用的会重新选上）。
+- 省电生效时，`body` 上标出 `data-prism-saving`（值是原因：manual / transparency / battery），主题自带的 CSS 可以据此停掉动画。赛博朋克 HUD 已经用上。
+- `scripts/check-theme.mjs`：在隔离的真宿主里检查主题文件依赖的宿主选择器还能不能匹配，DSH 升级后先跑一遍。
+
+### 改动
+
+- 悬停预览主题时连同它自带的 CSS 一起预览，和点下去看到的一样（以前只预览配色）。
+
+### Added
+
+- My themes can be renamed: select one and click Rename at the top of the settings page.
+- After deleting a My theme, an Undo button above the gallery puts it back for 8 seconds (reselecting it if it was in use).
+- While power saving is active, `body` carries `data-prism-saving` (the reason: manual / transparency / battery), so a theme's own CSS can stop animations. The Cyberpunk HUD uses it.
+- `scripts/check-theme.mjs` checks, on an isolated real host, whether the host selectors a theme file relies on still match; run it after a DSH upgrade.
+
+### Changed
+
+- Hover previews now include the theme's own CSS, matching what you get on click (before, only colors were previewed).
+
 ## [0.5.1] - 2026-11-07
 
 ### 修复

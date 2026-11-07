@@ -90,6 +90,7 @@ function build(host) {
       previewTimer = undefined
     }
     host.preview(null)
+    host.previewCss?.(null)
     if (bare) {
       bare = false
       host.setMainLayer(effectiveTokens(core.layer(), host.reduced()))
@@ -246,15 +247,49 @@ function build(host) {
     },
 
     /**
-     * 删掉一个「我的主题」。正在用的话先回到宿主默认。删除本身不能撤销。
+     * 删掉一个「我的主题」。正在用的话先回到宿主默认。
      * @param {string} id 包 id
+     * @returns {{pack: import('../../shared/state.js').ThemePack, index: number, active: boolean} | undefined} 删掉的是什么（给「撤销删除」用）
      */
     deleteMine(id) {
       const values = core.values()
-      const library = values.library.filter((pack) => pack.id !== id)
-      if (library.length === values.library.length) return
-      commit(values.theme === PACK_PREFIX + id ? layersForTheme(null) : {}, undefined, { library })
+      const index = values.library.findIndex((pack) => pack.id === id)
+      if (index < 0) return undefined
+      const active = values.theme === PACK_PREFIX + id
+      commit(active ? layersForTheme(null) : {}, undefined, { library: values.library.filter((pack) => pack.id !== id) })
       clearPreview()
+      return { pack: values.library[index], index, active }
+    },
+
+    /**
+     * 撤销删除：放回原来的位置，删之前正在用的话重新选上。
+     * @param {{pack: import('../../shared/state.js').ThemePack, index: number, active: boolean}} removed deleteMine 的返回值
+     * @returns {boolean} 是否放回去了（期间又存满了就放不回）
+     */
+    restoreMine(removed) {
+      const values = core.values()
+      if (values.library.some((pack) => pack.id === removed.pack.id)) return true
+      if (values.library.length >= LIBRARY_LIMIT) return false
+      const library = [...values.library]
+      library.splice(Math.min(removed.index, library.length), 0, removed.pack)
+      commit(removed.active ? layersForTheme(PACK_PREFIX + removed.pack.id) : {}, undefined, { library })
+      clearPreview()
+      return true
+    },
+
+    /**
+     * 给「我的主题」改名。
+     * @param {string} id 包 id
+     * @param {string} name 新名字
+     * @returns {true | 'name' | 'exists'} 成功，或失败原因：名字为空 / 和另一个重名
+     */
+    renameMine(id, name) {
+      const values = core.values()
+      const clean = normalizeName(name)
+      if (clean === '') return 'name'
+      if (values.library.some((pack) => pack.id !== id && pack.name === clean)) return 'exists'
+      commit({}, undefined, { library: values.library.map((pack) => (pack.id === id ? { ...pack, name: clean } : pack)) })
+      return true
     },
 
     /** @param {string | null} id 代码配色方案；null 跟随主题 */
@@ -396,7 +431,10 @@ function build(host) {
       previewTimer = setTimeout(() => {
         previewTimer = undefined
         const values = core.values()
-        show(visible({ ...values, ...layersForTheme(id, id === CUSTOM_THEME ? values.custom : null) }))
+        const next = { ...values, ...layersForTheme(id, id === CUSTOM_THEME ? values.custom : null) }
+        show(visible(next))
+        // 主题自带的 CSS 也一起预览（「我的主题」里的框体之类），点下去和悬停时看到的一样
+        host.previewCss?.(effectiveCss(next))
       }, PREVIEW_DELAY_MS)
     },
 

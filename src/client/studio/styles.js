@@ -22,6 +22,7 @@ export const CSS = `
 .prism-current{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-2)}
 .prism-current small{margin:0 8px;color:var(--dsw-alias-label-tertiary)}
 .prism-current .prism-desc{flex-basis:100%}
+.prism-deleted{margin-top:10px;font-size:13px;color:var(--dsw-alias-label-secondary)}
 .prism-save-name{width:200px}
 .prism-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .prism-row .prism-btn{border:.5px solid var(--dsw-alias-border-l4)}

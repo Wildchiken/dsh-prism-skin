@@ -138,14 +138,14 @@ function Notes({ t, useStore }) {
 }
 
 /** 主题卡片：一个缩小的界面，用这套主题自己的颜色画。 */
-function ThemeCard({ choice, selected, scheme, control, t }) {
+function ThemeCard({ choice, selected, scheme, control, t, onDeleted }) {
   const card = PlainCard({ choice, selected, scheme, control })
   if (choice.mine === undefined) return card
-  return h('div', { className: 'prism-card-wrap' }, card, h(DeleteMine, { id: choice.mine, name: choice.name, control, t }))
+  return h('div', { className: 'prism-card-wrap' }, card, h(DeleteMine, { id: choice.mine, name: choice.name, control, t, onDeleted }))
 }
 
 /** 删除「我的主题」：删了不能撤销，所以要点两次。 */
-function DeleteMine({ id, name, control, t }) {
+function DeleteMine({ id, name, control, t, onDeleted }) {
   const [armed, setArmed] = useState(false)
   return h(
     'button',
@@ -156,7 +156,11 @@ function DeleteMine({ id, name, control, t }) {
       'data-armed': armed ? '' : undefined,
       title: armed ? t('mine.confirm') : t('mine.delete', { name }),
       'aria-label': armed ? t('mine.confirm') : t('mine.delete', { name }),
-      onClick: () => (armed ? control.deleteMine(id) : setArmed(true)),
+      onClick: () => {
+        if (!armed) return setArmed(true)
+        const removed = control.deleteMine(id)
+        if (removed !== undefined) onDeleted?.(removed)
+      },
       onPointerLeave: () => setArmed(false),
       onBlur: () => setArmed(false),
     },
@@ -203,22 +207,24 @@ function PlainCard({ choice, selected, scheme, control }) {
 }
 
 /** 设置页顶上：现在用的是哪套、有没有改过，以及丢弃修改 / 存为我的主题 / 恢复默认。 */
-function CurrentBar({ control, t, useStore, name, mine }) {
+function CurrentBar({ control, t, useStore, name, mineId }) {
   const theme = useStore((state) => state.theme)
   const wallpaper = useStore((state) => state.wallpaper)
   const glass = useStore((state) => state.glass)
   const modified = useModified(useStore)
   const pristine = theme === null && !modified && wallpaper === null && glass === null
   const [draft, setDraft] = useState(null)
+  const [renaming, setRenaming] = useState(false)
   const [status, setStatus] = useState(null)
   const save = () => {
-    const result = control.saveAsMine(draft ?? '')
-    setStatus(result === true ? 'saved' : `error.${result}`)
+    const result = renaming ? control.renameMine(mineId, draft ?? '') : control.saveAsMine(draft ?? '')
+    setStatus(result === true ? (renaming ? 'renamed' : 'saved') : `error.${result}`)
     if (result === true) setDraft(null)
   }
-  const open = () => {
+  const open = (rename) => {
     setStatus(null)
-    setDraft(mine ? name : t('save.defaultName', { name }))
+    setRenaming(rename)
+    setDraft(rename || mineId !== undefined ? name : t('save.defaultName', { name }))
   }
   return h(
     'div',
@@ -229,7 +235,8 @@ function CurrentBar({ control, t, useStore, name, mine }) {
           'div',
           { className: 'prism-row' },
           h('button', { type: 'button', className: 'prism-btn', 'data-prism-discard': '', disabled: !modified, title: t('discard.hint'), onClick: control.discardChanges }, t('action.discard')),
-          h('button', { type: 'button', className: 'prism-btn', 'data-prism-save-open': '', onClick: open }, t('action.saveMine')),
+          h('button', { type: 'button', className: 'prism-btn', 'data-prism-save-open': '', onClick: () => open(false) }, t('action.saveMine')),
+          mineId === undefined ? null : h('button', { type: 'button', className: 'prism-btn', 'data-prism-rename-open': '', onClick: () => open(true) }, t('action.rename')),
           h('button', { type: 'button', className: 'prism-btn', 'data-prism-restore': '', disabled: pristine, title: t('restore.hint'), onClick: control.restoreDefaults }, t('action.restore')),
         )
       : h(
@@ -504,7 +511,13 @@ export function Section(props) {
     if (incoming !== null) setOpenTransfer(true)
   }, [incoming])
   const themeName = currentName(choices, theme, t)
-  const mine = choices.some((choice) => choice.id === theme && choice.mine !== undefined)
+  const mineId = choices.find((choice) => choice.id === theme && choice.mine !== undefined)?.mine
+  const [deleted, setDeleted] = useState(null)
+  useEffect(() => {
+    if (deleted === null) return undefined
+    const timer = setTimeout(() => setDeleted(null), 8000)
+    return () => clearTimeout(timer)
+  }, [deleted])
   const panelProps = { host, control, useStore, lib: LIB, themeName, themeKey: theme ?? 'host' }
   const seed = completeSeed(control.currentSeed())
   const report = control.auditSummary()
@@ -516,7 +529,7 @@ export function Section(props) {
     'div',
     { className: 'prism-section', 'data-prism-section': '' },
     h(Notes, { t, useStore }),
-    h(CurrentBar, { control, t, useStore, name: themeName, mine }),
+    h(CurrentBar, { control, t, useStore, name: themeName, mineId }),
     h(
       'div',
       { className: 'prism-group' },
@@ -524,8 +537,16 @@ export function Section(props) {
       h(
         'div',
         { className: 'prism-gallery' },
-        choices.map((choice) => h(ThemeCard, { key: choice.key, choice, selected: theme === choice.id, scheme, control, t })),
+        choices.map((choice) => h(ThemeCard, { key: choice.key, choice, selected: theme === choice.id, scheme, control, t, onDeleted: setDeleted })),
       ),
+      deleted === null
+        ? null
+        : h(
+            'div',
+            { className: 'prism-row prism-deleted', role: 'status', 'data-prism-deleted': deleted.pack.id },
+            h('span', null, t('mine.deleted', { name: deleted.pack.name })),
+            h('button', { type: 'button', className: 'prism-btn', 'data-prism-undo-delete': '', onClick: () => { control.restoreMine(deleted); setDeleted(null) } }, t('action.undo')),
+          ),
     ),
     h(
       'div',
