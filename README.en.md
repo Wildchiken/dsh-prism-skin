@@ -49,7 +49,15 @@ dsh plugin --profile <name> add https://github.com/Wildchiken/dsh-prism-skin/rel
 cd ~ && "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop add https://github.com/Wildchiken/dsh-prism-skin/releases/latest/download/dsh-prism-skin.tgz
 ```
 
-These links always point to the latest release. To pin a version use `https://github.com/Wildchiken/dsh-prism-skin/releases/download/v<version>/dsh-prism-skin-<version>.tgz` (see [Releases](https://github.com/Wildchiken/dsh-prism-skin/releases)). Not on npm yet.
+These links always point to the latest release, which is what you want for a first install. Not on npm yet.
+
+**Upgrade**: install again from the versioned link, replacing `<version>` with the new version from [Releases](https://github.com/Wildchiken/dsh-prism-skin/releases) (for example `0.6.0`). On the desktop app, quit first and use its bundled CLI as above.
+
+```bash
+dsh plugin --profile <name> add https://github.com/Wildchiken/dsh-prism-skin/releases/download/v<version>/dsh-prism-skin-<version>.tgz
+```
+
+Do not re-run the latest link to upgrade: the address has not changed, so pnpm assumes you are up to date and skips the download.
 
 ## Use
 

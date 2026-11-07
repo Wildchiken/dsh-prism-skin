@@ -49,7 +49,15 @@ dsh plugin --profile <名字> add https://github.com/Wildchiken/dsh-prism-skin/r
 cd ~ && "/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop add https://github.com/Wildchiken/dsh-prism-skin/releases/latest/download/dsh-prism-skin.tgz
 ```
 
-上面的链接总是指向最新版。想固定版本，换成 `https://github.com/Wildchiken/dsh-prism-skin/releases/download/v<版本>/dsh-prism-skin-<版本>.tgz`，版本号见 [Releases](https://github.com/Wildchiken/dsh-prism-skin/releases)。目前还没有发布到 npm。
+上面的链接总是指向最新版，适合第一次安装。目前还没有发布到 npm。
+
+**升级**：用带版本号的链接再装一次，把 `<版本>` 换成 [Releases](https://github.com/Wildchiken/dsh-prism-skin/releases) 里的新版本号（如 `0.6.0`）。桌面版同样先退出、用桌面版自带的命令行。
+
+```bash
+dsh plugin --profile <名字> add https://github.com/Wildchiken/dsh-prism-skin/releases/download/v<版本>/dsh-prism-skin-<版本>.tgz
+```
+
+不要重复运行 latest 链接来升级：地址没变，pnpm 会以为已经是最新版，不会重新下载。
 
 ## 怎么用
 
