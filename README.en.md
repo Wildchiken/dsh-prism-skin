@@ -113,11 +113,11 @@ Light and dark screenshots of all ten themes are in [docs/screenshots/](docs/scr
 
 </details>
 
-## Living with skin-center and claude-style
+## Using it with other theme plugins
 
 Prism itself uses no `!important` and no hashed host class names; it changes color variables only through the host's official theme API (`overrideTokens`). (Custom CSS you write or a theme file brings, such as the Cyberpunk HUD above, is the exception.)
 
-skin-center and claude-style override those variables with their own styles. When Prism detects them, it only says so on the settings page and quick panel and does not fight them. For Prism's palette to show fully, switch skin-center back to "Official default" or disable claude-style. Prism can also export the current palette as a Skin Center skin.
+Another theme plugin that overrides those variables with its own styles will hide part of Prism's palette, so run one theme plugin at a time. Prism recognizes a few common ones (currently skin-center and claude-style) and only says so on the settings page and quick panel instead of fighting them.
 
 Settings live in `$DSH_HOME/dsh-prism-skin/state.json` (by default `~/.dsh/dsh-prism-skin/state.json`, mode 0600), and wallpapers in `wallpapers/` next to it. The browser's localStorage is only a cache; open tabs stay in sync.
 

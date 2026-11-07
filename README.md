@@ -113,11 +113,11 @@ flowchart LR
 
 </details>
 
-## 和 skin-center、claude-style 共存
+## 和其他换肤插件一起用
 
 棱镜本身不用 `!important`，也不依赖宿主的哈希类名，只通过宿主正式的主题接口（`overrideTokens`）改颜色变量。（你自己写的或主题文件带的自定义 CSS 例外，比如上面的赛博朋克 HUD。）
 
-skin-center 和 claude-style 会用自己的样式盖住这些变量。检测到它们正在生效时，棱镜只在设置页和快捷面板上提示，不去抢。想让棱镜的配色完整显示，在 skin-center 里切回「官方默认」，或者停用 claude-style。棱镜也可以把当前配色导出成 skin-center 皮肤。
+别的换肤插件如果用自己的样式盖住这些变量，棱镜的配色就会显示不全，建议同一时间只开一个换肤插件。棱镜能认出几个常见的（目前是 skin-center 和 claude-style），检测到时只在设置页和快捷面板上提示，不去抢。
 
 设置保存在 `$DSH_HOME/dsh-prism-skin/state.json`（默认 `~/.dsh/dsh-prism-skin/state.json`，权限 0600），壁纸存在同目录的 `wallpapers/` 里。浏览器的 localStorage 只做缓存，多个标签页之间实时同步。
 
