@@ -14,6 +14,11 @@ const OVERRIDES_LIMIT = 600
 const VALUE_MAX_LENGTH = 400
 /** 自定义 CSS 的上限（字符）。 */
 export const CSS_MAX_LENGTH = 8192
+/** 「我的主题」最多存多少个。 */
+export const LIBRARY_LIMIT = 24
+/** 主题名最长多少字。 */
+export const NAME_MAX_LENGTH = 60
+const PACK_ID = /^[a-z0-9]{4,16}$/
 
 /**
  * @typedef {object} Seed 生成配色的种子。
@@ -39,6 +44,18 @@ export const CSS_MAX_LENGTH = 8192
  * @property {number | null} radius 圆角倍数 0–2（「我的调整」）；null 表示用宿主的圆角
  * @property {string} css 自定义 CSS（「高级覆盖」）；空串表示没有
  * @property {HistoryEntry[]} history 撤销历史，最新的在最后
+ * @property {ThemePack[]} library 「我的主题」：导入或保存下来的整套主题。不进撤销历史
+ */
+
+/**
+ * @typedef {object} ThemePack 一整套主题：选它时这些一起生效，用户自己的修改再叠在上面。
+ * @property {string} id 小写字母和数字；主题 id 是 `my-<id>`
+ * @property {string} name 名字
+ * @property {Partial<Seed>} seed 种子
+ * @property {number} [radius] 圆角倍数
+ * @property {Values['overrides']} [overrides] 主题自带的变量覆盖
+ * @property {string} [css] 主题自带的 CSS
+ * @property {'light' | 'dark'} [scheme] 主题要求的明暗；选中时宿主跟着切
  */
 
 /**
@@ -59,7 +76,7 @@ export const CSS_MAX_LENGTH = 8192
 
 /** 用户设置里参与撤销的键。 */
 export const LAYER_KEYS = /** @type {const} */ (['theme', 'custom', 'adjust', 'overrides', 'wallpaper', 'glass', 'power', 'radius', 'css'])
-const VALUE_KEYS = [...LAYER_KEYS, 'history']
+const VALUE_KEYS = [...LAYER_KEYS, 'history', 'library']
 
 const clampNumber = (value, lo, hi) => (value < lo ? lo : value > hi ? hi : value)
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -189,6 +206,76 @@ export function normalizeWallpaper(raw) {
   }
 }
 
+/**
+ * @param {unknown} raw 任意输入
+ * @returns {string} 去掉控制字符、首尾空白，截到上限的名字；不合法时是空串
+ */
+export function normalizeName(raw) {
+  if (typeof raw !== 'string') return ''
+  return [...raw.replace(/[\u0000-\u001f\u007f]/g, '').trim()].slice(0, NAME_MAX_LENGTH).join('').trim()
+}
+
+/**
+ * @param {unknown} raw 任意输入
+ * @returns {ThemePack | undefined} 合法的主题包；不合法时 undefined
+ */
+function normalizePack(raw) {
+  if (!isRecord(raw) || typeof raw.id !== 'string' || !PACK_ID.test(raw.id)) return undefined
+  const name = normalizeName(raw.name)
+  const seed = normalizeSeed(raw.seed)
+  if (name === '' || Object.keys(seed).length === 0) return undefined
+  /** @type {ThemePack} */
+  const pack = { id: raw.id, name, seed }
+  if (typeof raw.radius === 'number' && Number.isFinite(raw.radius)) pack.radius = Math.round(clampNumber(raw.radius, 0, 2) * 100) / 100
+  const overrides = normalizeOverrides(raw.overrides)
+  if (Object.keys(overrides).length > 0) pack.overrides = overrides
+  const css = checkCss(raw.css)
+  if (css.ok && css.css !== '') pack.css = css.css
+  if (raw.scheme === 'light' || raw.scheme === 'dark') pack.scheme = raw.scheme
+  return pack
+}
+
+/**
+ * @param {unknown} raw 任意输入
+ * @returns {ThemePack[]} 合法的「我的主题」：丢掉坏条目和重复 id，最多 LIBRARY_LIMIT 个
+ */
+export function normalizeLibrary(raw) {
+  if (!Array.isArray(raw)) return []
+  const seen = new Set()
+  /** @type {ThemePack[]} */
+  const out = []
+  for (const item of raw) {
+    const pack = normalizePack(item)
+    if (pack === undefined || seen.has(pack.id)) continue
+    seen.add(pack.id)
+    out.push(pack)
+    if (out.length >= LIBRARY_LIMIT) break
+  }
+  return out
+}
+
+/** 「我的主题」的主题 id 前缀：`my-<包 id>`。 */
+export const PACK_PREFIX = 'my-'
+
+/**
+ * @param {{theme: string | null, library?: ThemePack[]}} values 设置
+ * @returns {ThemePack | undefined} 当前选中的「我的主题」；不是或已删掉时 undefined
+ */
+export function packOf(values) {
+  if (typeof values.theme !== 'string' || !values.theme.startsWith(PACK_PREFIX)) return undefined
+  const id = values.theme.slice(PACK_PREFIX.length)
+  return (values.library ?? []).find((pack) => pack.id === id)
+}
+
+/**
+ * @param {{theme: string | null, library?: ThemePack[], css: string}} values 设置
+ * @returns {string} 实际生效的 CSS：主题自带的在前，用户自己的在后
+ */
+export function effectiveCss(values) {
+  const own = packOf(values)?.css ?? ''
+  return own === '' ? values.css : values.css === '' ? own : `${own}\n${values.css}`
+}
+
 const normalizeThemeId = (raw) => (typeof raw === 'string' && /^[a-z0-9-]{1,40}$/.test(raw) ? raw : null)
 
 /**
@@ -222,7 +309,7 @@ function normalizeEntry(raw) {
 export function normalizeValues(raw) {
   const source = isRecord(raw) ? raw : {}
   const history = Array.isArray(source.history) ? source.history.slice(-HISTORY_LIMIT).map(normalizeEntry) : []
-  return { ...normalizeEntry(source), history }
+  return { ...normalizeEntry(source), history, library: normalizeLibrary(source.library) }
 }
 
 /**

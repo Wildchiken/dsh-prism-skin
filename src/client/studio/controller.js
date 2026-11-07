@@ -4,11 +4,11 @@
  * 所有改动都走 `commit`：算出新变量，交给设置中枢落盘和同步。悬停预览和滑块拖动中
  * 只改宿主的变量层，不写存档也不进撤销历史，松手或点击才算数。
  */
-import { CUSTOM_THEME, audit, auditSeed, colorWall, completeSeed, DEFAULT_GLASS, gradientWall, imageWall, randomSeed, resolveLayer, seedFromWall, seedOf } from '../../engine/index.js'
+import { CUSTOM_THEME, audit, auditSeed, colorWall, completeSeed, DEFAULT_GLASS, effectiveCss, gradientWall, imageWall, PACK_PREFIX, packOf, randomSeed, resolveLayer, seedFromWall, seedOf } from '../../engine/index.js'
 
 const PREVIEW_DELAY_MS = 70
 
-/** 切换主题时保留的微调：这两项是个人偏好，不属于某个主题。 */
+/** 切换主题时保留的微调：这两项是个人偏好，不属于某个主题。其余修改（变量覆盖、CSS、圆角）换主题时清掉。 */
 const KEEP_ON_SWITCH = ['contrast', 'depth']
 
 const keptAdjust = (adjust) => {
@@ -28,14 +28,20 @@ export function createController(host) {
 
 function build(host) {
   const { core } = host
-  const { checkCss, effectiveTokens, layerChange, undoChange } = host.shared
+  const { checkCss, effectiveTokens, layerChange, undoChange, normalizeName, LIBRARY_LIMIT } = host.shared
   let previewTimer
   let bare = false
 
-  /** 提交一次改动，同时记入撤销历史。 */
-  const commit = (next, explicitWall) => {
+  /**
+   * 提交一次改动，同时记入撤销历史。
+   * @param {object} next 要改的层
+   * @param {object} [explicitWall] 已经分析好的壁纸
+   * @param {{library?: import('../../shared/state.js').ThemePack[]}} [extra] 一起写、但不进撤销历史的键（「我的主题」）
+   */
+  const commit = (next, explicitWall, extra) => {
     const values = core.values()
     const change = layerChange(values, next)
+    if (extra !== undefined) Object.assign(change, extra)
     if (Object.keys(change).length === 0) return
     finish(values, change, explicitWall)
   }
@@ -93,7 +99,43 @@ function build(host) {
   /** 选「宿主默认」时彻底让位：连我的调整也清掉，只剩高级覆盖（如果有的话）。 */
   const layersForTheme = (id, custom = null) => {
     const values = core.values()
-    return { theme: id, custom, adjust: id === null ? {} : keptAdjust(values.adjust) }
+    return { theme: id, custom, adjust: id === null ? {} : keptAdjust(values.adjust), overrides: {}, css: '', radius: null }
+  }
+
+  /**
+   * 把一套主题存进「我的主题」：同名的覆盖原来那个（id 不变），否则新加一个。
+   * @param {import('../../shared/state.js').Values} values 当前值
+   * @param {Omit<import('../../shared/state.js').ThemePack, 'id'>} pack 主题
+   * @returns {{id: string, library: import('../../shared/state.js').ThemePack[]} | null} 新的列表；满了时 null
+   */
+  const storePack = (values, pack) => {
+    const same = values.library.find((item) => item.name === pack.name)
+    if (same === undefined && values.library.length >= LIBRARY_LIMIT) return null
+    const id = same?.id ?? Math.random().toString(36).slice(2, 10).padEnd(6, '0')
+    const item = { ...pack, id }
+    return { id, library: same === undefined ? [...values.library, item] : values.library.map((old) => (old.id === id ? item : old)) }
+  }
+
+  /**
+   * 当前实际看到的这套（主题 + 用户修改合在一起）。
+   * @param {import('../../shared/state.js').Values} values 当前值
+   * @returns {import('../../shared/share.js').ThemeFile} 主题文件内容（不含名字）
+   */
+  const currentFile = (values) => {
+    const pack = packOf(values)
+    const radius = values.radius ?? pack?.radius ?? null
+    return {
+      seed: completeSeed(seedOf(values)),
+      ...(radius === null ? {} : { radius }),
+      overrides: { ...pack?.overrides, ...values.overrides },
+      css: effectiveCss(values),
+      ...(pack?.scheme === undefined ? {} : { scheme: pack.scheme }),
+    }
+  }
+
+  /** 选中「我的主题」里要求明暗的那个时，宿主跟着切。 */
+  const followScheme = (scheme) => {
+    if (scheme !== undefined && scheme !== host.scheme()) host.setScheme(scheme)
   }
 
   /** 审计结果按变量对象缓存：设置页每次重绘都要显示，变量没变就不重算。 */
@@ -105,6 +147,7 @@ function build(host) {
     pickTheme(id) {
       commit(layersForTheme(id))
       clearPreview()
+      followScheme(packOf(core.values())?.scheme)
     },
 
     randomize() {
@@ -157,8 +200,7 @@ function build(host) {
      * @param {{base: string, palette: object[]}} derived 分析结果
      */
     useWallColors(derived) {
-      const values = core.values()
-      commit({ theme: CUSTOM_THEME, custom: seedFromWall(derived), adjust: keptAdjust(values.adjust) })
+      commit(layersForTheme(CUSTOM_THEME, seedFromWall(derived)))
       clearPreview()
     },
 
@@ -170,14 +212,46 @@ function build(host) {
       clearPreview()
     },
 
+    /** 丢掉自己的修改（微调、变量覆盖、CSS、圆角），回到当前主题原样。可撤销。 */
+    discardChanges() {
+      commit({ adjust: {}, overrides: {}, css: '', radius: null })
+      clearPreview()
+    },
+
+    /** 恢复默认：主题、修改、背景全部清掉，回到宿主原样。可撤销；「我的主题」留着。 */
+    restoreDefaults() {
+      commit({ theme: null, custom: null, adjust: {}, overrides: {}, css: '', radius: null, wallpaper: null, glass: null })
+      clearPreview()
+    },
+
     /**
-     * 重置一层：主题回到宿主默认（保留我的调整）；我的调整连圆角一起清；高级覆盖连自定义 CSS 一起清。
-     * @param {'theme' | 'adjust' | 'overrides'} layer 要重置的层
+     * 把当前看到的这套存成「我的主题」并选中它（看起来不变，修改并进主题里）。
+     * @param {string} name 名字；和已有的同名时覆盖那个
+     * @returns {true | 'name' | 'css' | 'full'} 成功，或失败原因：名字为空 / CSS 合起来超长 / 存满了
      */
-    resetLayer(layer) {
-      if (layer === 'theme') commit({ theme: null, custom: null })
-      else if (layer === 'adjust') commit({ adjust: {}, radius: null })
-      else commit({ overrides: {}, css: '' })
+    saveAsMine(name) {
+      const values = core.values()
+      const clean = normalizeName(name)
+      if (clean === '') return 'name'
+      const file = currentFile(values)
+      if (!checkCss(file.css).ok) return 'css'
+      const { css, overrides, ...rest } = file
+      const stored = storePack(values, { name: clean, ...rest, ...(Object.keys(overrides).length > 0 ? { overrides } : {}), ...(css === '' ? {} : { css }) })
+      if (stored === null) return 'full'
+      commit({ theme: PACK_PREFIX + stored.id, custom: null, adjust: {}, overrides: {}, css: '', radius: null }, undefined, { library: stored.library })
+      clearPreview()
+      return true
+    },
+
+    /**
+     * 删掉一个「我的主题」。正在用的话先回到宿主默认。删除本身不能撤销。
+     * @param {string} id 包 id
+     */
+    deleteMine(id) {
+      const values = core.values()
+      const library = values.library.filter((pack) => pack.id !== id)
+      if (library.length === values.library.length) return
+      commit(values.theme === PACK_PREFIX + id ? layersForTheme(null) : {}, undefined, { library })
       clearPreview()
     },
 
@@ -238,26 +312,35 @@ function build(host) {
     /**
      * 导入一份主题：整份写进去，记一步撤销。写完发现不对（生成失败）就撤回，不留半截状态。
      * @param {import('../../shared/share.js').ThemeFile} file 已经校验过的内容
-     * @param {{wallpaper?: import('../../shared/state.js').Wallpaper | null}} [extra] 一起写入的壁纸（迁移用）
-     * @returns {boolean} 是否成功
+     * 整套存进「我的主题」（同名的覆盖）并选中；原来的修改清掉。可撤销（「我的主题」里的这一项会留着）。
+     * @param {{wallpaper?: import('../../shared/state.js').Wallpaper | null, fallbackName?: string}} [extra] 一起写入的壁纸（迁移用）；文件没写名字时用的名字
+     * @returns {boolean | 'full'} 是否成功；「我的主题」存满了时是 'full'
      */
     importTheme(file, extra = {}) {
       const values = core.values()
       const before = values.history.length
-      const next = { theme: CUSTOM_THEME, custom: file.seed, adjust: {} }
-      if (file.radius !== undefined) next.radius = file.radius
-      if (file.overrides !== undefined) next.overrides = file.overrides
-      if (file.css !== undefined) next.css = file.css
+      const name = normalizeName(file.name) || normalizeName(extra.fallbackName) || 'Theme'
+      const stored = storePack(values, {
+        name,
+        seed: file.seed,
+        ...(file.radius === undefined ? {} : { radius: file.radius }),
+        ...(file.overrides === undefined || Object.keys(file.overrides).length === 0 ? {} : { overrides: file.overrides }),
+        ...(file.css === undefined || file.css === '' ? {} : { css: file.css }),
+        ...(file.scheme === undefined ? {} : { scheme: file.scheme }),
+      })
+      if (stored === null) return 'full'
+      // 整套换上，原来的修改清掉（可撤销）
+      const next = { theme: PACK_PREFIX + stored.id, custom: null, adjust: {}, overrides: {}, css: '', radius: null }
       if ('wallpaper' in extra) next.wallpaper = extra.wallpaper
       try {
-        commit(next)
+        commit(next, undefined, { library: stored.library })
         const tokens = core.layer().tokens
         if (tokens === null || tokens['--dsw-alias-bg-base'] === undefined) throw new Error('导入后没有生成变量')
       } catch (error) {
         if (core.values().history.length > before) {
           const current = core.values()
           const change = undoChange(current)
-          if (change !== undefined) finish(current, change)
+          if (change !== undefined) finish(current, { ...change, library: values.library })
         }
         console.warn('[dsh-prism-skin] 导入失败，已撤回：', error)
         return false
@@ -279,9 +362,7 @@ function build(host) {
 
     /** @returns {import('../../shared/share.js').ThemeFile} 当前设置导出成主题文件的内容 */
     exportTheme() {
-      const values = core.values()
-      const seed = completeSeed(seedOf(values))
-      return { seed, ...(values.radius === null ? {} : { radius: values.radius }), overrides: values.overrides, css: values.css }
+      return currentFile(core.values())
     },
 
     /** 拖动中：立刻看到效果，但不写存档。 */

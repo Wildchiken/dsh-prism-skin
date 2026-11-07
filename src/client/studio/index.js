@@ -3,7 +3,7 @@
  */
 import { createElement as h, lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { BASE_SEED, CODE_SCHEMES, CUSTOM_THEME, RADIUS_TOKENS, THEMES, completeSeed, generate, seedOf, tokenNames } from '../../engine/index.js'
+import { BASE_SEED, CODE_SCHEMES, CUSTOM_THEME, effectiveCss, PACK_PREFIX, RADIUS_TOKENS, THEMES, completeSeed, generate, seedOf, tokenNames } from '../../engine/index.js'
 import { packToTheme, planDream } from '../../engine/convert.js'
 import { fromOklch, toHex } from '../../engine/color.js'
 import { BackgroundGroup } from './background.js'
@@ -46,17 +46,18 @@ const localeOf = (host) => {
 
 /** 卡片要用的颜色：一套主题只算一次。 */
 const paletteCache = new Map()
-function paletteOf(key, seed) {
+function paletteOf(key, seed, overrides) {
   let tokens = paletteCache.get(key)
   if (tokens === undefined) {
-    tokens = generate(seed)
+    // 「我的主题」自带的变量覆盖也算进去，卡片才像那套主题
+    tokens = overrides === undefined ? generate(seed) : { ...generate(seed), ...overrides }
     paletteCache.set(key, tokens)
   }
   return tokens
 }
 
-function cardColors(key, seed, scheme) {
-  const tokens = paletteOf(key, seed)
+function cardColors(key, seed, scheme, overrides) {
+  const tokens = paletteOf(key, seed, overrides)
   const pick = (name) => tokens[`--dsw-${name}`][scheme]
   return {
     canvas: pick('alias-bg-base'),
@@ -71,15 +72,31 @@ function cardColors(key, seed, scheme) {
   }
 }
 
-/** 主题列表：宿主默认 + 内置 + （正在用的）随机配色。 */
-function useChoices(theme, custom, t, host) {
+/** 主题列表：宿主默认 + 内置 + 「我的主题」 + （正在用的）随机配色。 */
+function useChoices(theme, custom, library, t, host) {
   return useMemo(() => {
     const locale = localeOf(host)
     const rows = [{ id: null, key: 'none', name: t('theme.none'), seed: BASE_SEED }]
     for (const item of THEMES) rows.push({ id: item.id, key: item.id, name: SAFE_NAME(item, locale), seed: item.seed })
+    for (const pack of library) rows.push({ id: PACK_PREFIX + pack.id, key: `my:${pack.id}:${JSON.stringify([pack.seed, pack.overrides])}`, name: pack.name, seed: pack.seed, overrides: pack.overrides, mine: pack.id })
     if (theme === CUSTOM_THEME && custom !== null) rows.push({ id: CUSTOM_THEME, key: `custom:${JSON.stringify(custom)}`, name: t('theme.custom'), seed: custom })
     return rows
-  }, [theme, custom, t, host])
+  }, [theme, custom, library, t, host])
+}
+
+/**
+ * 当前主题的名字；选中的「我的主题」被删掉了就算宿主默认。
+ * @returns {string} 名字
+ */
+const currentName = (choices, theme, t) => choices.find((choice) => choice.id === theme)?.name ?? t('theme.none')
+
+/** 有没有在主题上做过修改（微调、圆角、变量覆盖、CSS）。 */
+function useModified(useStore) {
+  const adjust = useStore((state) => state.adjust)
+  const radius = useStore((state) => state.radius)
+  const overrideCount = useStore((state) => state.overrideCount)
+  const css = useStore((state) => state.css)
+  return Object.keys(adjust).length > 0 || radius !== null || overrideCount > 0 || css !== ''
 }
 
 const ICON = {
@@ -121,8 +138,34 @@ function Notes({ t, useStore }) {
 }
 
 /** 主题卡片：一个缩小的界面，用这套主题自己的颜色画。 */
-function ThemeCard({ choice, selected, scheme, control }) {
-  const colors = cardColors(choice.key, choice.seed, scheme)
+function ThemeCard({ choice, selected, scheme, control, t }) {
+  const card = PlainCard({ choice, selected, scheme, control })
+  if (choice.mine === undefined) return card
+  return h('div', { className: 'prism-card-wrap' }, card, h(DeleteMine, { id: choice.mine, name: choice.name, control, t }))
+}
+
+/** 删除「我的主题」：删了不能撤销，所以要点两次。 */
+function DeleteMine({ id, name, control, t }) {
+  const [armed, setArmed] = useState(false)
+  return h(
+    'button',
+    {
+      type: 'button',
+      className: 'prism-card-del',
+      'data-prism-delete-mine': id,
+      'data-armed': armed ? '' : undefined,
+      title: armed ? t('mine.confirm') : t('mine.delete', { name }),
+      'aria-label': armed ? t('mine.confirm') : t('mine.delete', { name }),
+      onClick: () => (armed ? control.deleteMine(id) : setArmed(true)),
+      onPointerLeave: () => setArmed(false),
+      onBlur: () => setArmed(false),
+    },
+    armed ? t('mine.confirm') : h(Icon, { name: 'cross', size: 12 }),
+  )
+}
+
+function PlainCard({ choice, selected, scheme, control }) {
+  const colors = cardColors(choice.key, choice.seed, scheme, choice.overrides)
   const line = (width, color) => h('div', { className: 'prism-line', style: { width, background: color } })
   return h(
     'button',
@@ -156,6 +199,59 @@ function ThemeCard({ choice, selected, scheme, control }) {
       ),
     ),
     h('div', { className: 'prism-card-name' }, h('span', null, choice.name), selected ? h(Icon, { name: 'check', size: 12 }) : null),
+  )
+}
+
+/** 设置页顶上：现在用的是哪套、有没有改过，以及丢弃修改 / 存为我的主题 / 恢复默认。 */
+function CurrentBar({ control, t, useStore, name, mine }) {
+  const theme = useStore((state) => state.theme)
+  const wallpaper = useStore((state) => state.wallpaper)
+  const glass = useStore((state) => state.glass)
+  const modified = useModified(useStore)
+  const pristine = theme === null && !modified && wallpaper === null && glass === null
+  const [draft, setDraft] = useState(null)
+  const [status, setStatus] = useState(null)
+  const save = () => {
+    const result = control.saveAsMine(draft ?? '')
+    setStatus(result === true ? 'saved' : `error.${result}`)
+    if (result === true) setDraft(null)
+  }
+  const open = () => {
+    setStatus(null)
+    setDraft(mine ? name : t('save.defaultName', { name }))
+  }
+  return h(
+    'div',
+    { className: 'prism-current', 'data-prism-current': modified ? 'modified' : 'clean' },
+    h('div', null, h('small', null, t('current.label')), h('b', { 'data-prism-current-name': '' }, name), modified ? h('small', null, t('theme.modified')) : null),
+    draft === null
+      ? h(
+          'div',
+          { className: 'prism-row' },
+          h('button', { type: 'button', className: 'prism-btn', 'data-prism-discard': '', disabled: !modified, title: t('discard.hint'), onClick: control.discardChanges }, t('action.discard')),
+          h('button', { type: 'button', className: 'prism-btn', 'data-prism-save-open': '', onClick: open }, t('action.saveMine')),
+          h('button', { type: 'button', className: 'prism-btn', 'data-prism-restore': '', disabled: pristine, title: t('restore.hint'), onClick: control.restoreDefaults }, t('action.restore')),
+        )
+      : h(
+          'div',
+          { className: 'prism-row' },
+          h('input', {
+            className: 'prism-input prism-save-name',
+            value: draft,
+            maxLength: 60,
+            autoFocus: true,
+            'aria-label': t('save.name'),
+            'data-prism-save-name': '',
+            onChange: (event) => setDraft(event.target.value),
+            onKeyDown: (event) => {
+              if (event.key === 'Enter') save()
+              else if (event.key === 'Escape') setDraft(null)
+            },
+          }),
+          h('button', { type: 'button', className: 'prism-btn', 'data-prism-save': '', disabled: draft.trim() === '', onClick: save }, t('action.save')),
+          h('button', { type: 'button', className: 'prism-btn', onClick: () => setDraft(null) }, t('action.cancel')),
+        ),
+    status === null ? null : h('div', { className: 'prism-desc', 'data-prism-save-status': status, ...(status.startsWith('error.') ? { 'data-bad': '' } : {}) }, t(`save.${status}`)),
   )
 }
 
@@ -274,7 +370,7 @@ function SeedSlider({ spec, value, adjusted, control, t }) {
 }
 
 /** 给高级、导入导出分块用的函数：它们只有界面，引擎和校验从这里拿，不重复打包。 */
-const LIB = { tokenNames, RADIUS_TOKENS, generate, completeSeed, seedOf, packToTheme, planDream }
+const LIB = { tokenNames, RADIUS_TOKENS, generate, completeSeed, seedOf, effectiveCss, packToTheme, planDream }
 
 /** 分块的加载函数由宿主能力给出；lazy 组件只建一次。 */
 let customLoader
@@ -398,8 +494,8 @@ export function Section(props) {
   const radius = useStore((state) => state.radius)
   const css = useStore((state) => state.css)
   const incoming = useStore((state) => state.incoming)
-  const choices = useChoices(theme, custom, t, host)
-  const adjustedCount = Object.keys(adjust).length + (radius === null ? 0 : 1)
+  const library = useStore((state) => state.library)
+  const choices = useChoices(theme, custom, library, t, host)
   const [openAdvanced, setOpenAdvanced] = useState(false)
   const [openTransfer, setOpenTransfer] = useState(false)
   customLoader = host.loadCustom
@@ -407,7 +503,8 @@ export function Section(props) {
   useEffect(() => {
     if (incoming !== null) setOpenTransfer(true)
   }, [incoming])
-  const themeName = choices.find((choice) => choice.id === theme)?.name ?? t('theme.custom')
+  const themeName = currentName(choices, theme, t)
+  const mine = choices.some((choice) => choice.id === theme && choice.mine !== undefined)
   const panelProps = { host, control, useStore, lib: LIB, themeName, themeKey: theme ?? 'host' }
   const seed = completeSeed(control.currentSeed())
   const report = control.auditSummary()
@@ -419,20 +516,15 @@ export function Section(props) {
     'div',
     { className: 'prism-section', 'data-prism-section': '' },
     h(Notes, { t, useStore }),
+    h(CurrentBar, { control, t, useStore, name: themeName, mine }),
     h(
       'div',
       { className: 'prism-group' },
-      h(
-        'div',
-        { className: 'prism-head' },
-        h('div', { className: 'prism-title' }, t('title.theme')),
-        h(ActionButtons, { control, t, useStore }),
-        h('button', { type: 'button', className: 'prism-btn', disabled: theme === null, 'data-prism-reset': 'theme', title: t('theme.resetHint'), onClick: () => control.resetLayer('theme') }, t('action.reset')),
-      ),
+      h('div', { className: 'prism-head' }, h('div', { className: 'prism-title' }, t('title.theme')), h(ActionButtons, { control, t, useStore })),
       h(
         'div',
         { className: 'prism-gallery' },
-        choices.map((choice) => h(ThemeCard, { key: choice.key, choice, selected: theme === choice.id, scheme, control })),
+        choices.map((choice) => h(ThemeCard, { key: choice.key, choice, selected: theme === choice.id, scheme, control, t })),
       ),
     ),
     h(
@@ -447,12 +539,7 @@ export function Section(props) {
     h(
       'div',
       { className: 'prism-group' },
-      h(
-        'div',
-        { className: 'prism-head' },
-        h('div', { className: 'prism-title' }, t('title.adjust')),
-        h('button', { type: 'button', className: 'prism-btn', disabled: adjustedCount === 0, 'data-prism-reset': 'adjust', onClick: () => control.resetLayer('adjust') }, t('action.reset')),
-      ),
+      h('div', { className: 'prism-head' }, h('div', { className: 'prism-title' }, t('title.adjust'))),
       h('div', { className: 'prism-desc' }, t('adjust.desc')),
       h(
         'div',
@@ -471,7 +558,7 @@ export function Section(props) {
         desc: overrideCount > 0 || css !== '' ? t('overrides.desc', { count: overrideCount, css: css === '' ? t('overrides.noCss') : t('overrides.hasCss') }) : t('overrides.empty'),
         open: openAdvanced,
         onToggle: () => setOpenAdvanced((value) => !value),
-        reset: h('button', { type: 'button', className: 'prism-btn', disabled: overrideCount === 0 && css === '', 'data-prism-reset': 'overrides', onClick: () => control.resetLayer('overrides') }, t('action.reset')),
+        reset: null,
       },
       h(LazyAdvanced, panelProps),
     ),
@@ -505,7 +592,9 @@ export function QuickPanel(props) {
   const theme = useStore((state) => state.theme)
   const custom = useStore((state) => state.custom)
   const scheme = useStore((state) => state.scheme)
-  const choices = useChoices(theme, custom, t, host)
+  const library = useStore((state) => state.library)
+  const modified = useModified(useStore)
+  const choices = useChoices(theme, custom, library, t, host)
   const [hovered, setHovered] = useState(undefined)
   const [place, setPlace] = useState(undefined)
 
@@ -550,8 +639,7 @@ export function QuickPanel(props) {
 
   useEffect(() => control.clearPreview, [control])
 
-  const current = choices.find((choice) => choice.id === theme)
-  const label = hovered ?? current?.name ?? ''
+  const label = hovered ?? (modified ? `${currentName(choices, theme, t)} · ${t('theme.modified')}` : currentName(choices, theme, t))
   const panel = h(
     'section',
     { className: 'prism-panel', 'data-prism-panel': '', style: place ?? { visibility: 'hidden' } },
@@ -560,7 +648,7 @@ export function QuickPanel(props) {
       'div',
       { className: 'prism-dots' },
       choices.map((choice) => {
-        const colors = cardColors(choice.key, choice.seed, scheme)
+        const colors = cardColors(choice.key, choice.seed, scheme, choice.overrides)
         return h('button', {
           key: choice.key,
           type: 'button',

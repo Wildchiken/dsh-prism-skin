@@ -15,6 +15,16 @@ export const CSS = `
 .prism-btn:disabled{color:var(--dsw-alias-label-caption);cursor:default}
 .prism-btn:focus-visible,.prism-card:focus-visible,.prism-dot:focus-visible,.prism-swatch:focus-visible,.prism-chip:focus-visible,.prism-range:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}
 .prism-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.prism-card-wrap{position:relative;display:flex;flex-direction:column;min-width:0}
+.prism-card-del{position:absolute;top:6px;right:6px;height:22px;min-width:22px;padding:0 6px;border:0;border-radius:11px;background:#0009;color:#fff;font:inherit;font-size:12px;cursor:pointer;opacity:0}
+.prism-card-wrap:hover .prism-card-del,.prism-card-del:focus-visible,.prism-card-del[data-armed]{opacity:1}
+.prism-card-del[data-armed]{background:#d33}
+.prism-current{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-2)}
+.prism-current small{margin:0 8px;color:var(--dsw-alias-label-tertiary)}
+.prism-current .prism-desc{flex-basis:100%}
+.prism-save-name{width:200px}
+.prism-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.prism-row .prism-btn{border:.5px solid var(--dsw-alias-border-l4)}
 .prism-card{display:flex;flex-direction:column;gap:6px;min-width:0;padding:0;border:0;background:transparent;color:inherit;font:inherit;font-size:13px;line-height:20px;text-align:left;cursor:pointer}
 .prism-mini{position:relative;display:grid;grid-template-columns:30% 1fr;aspect-ratio:16/10;overflow:hidden;border-radius:var(--dsw-radius-md);box-shadow:0 0 0 .5px var(--dsw-alias-border-l4);transition:transform .14s var(--ds-ease-in-out),box-shadow .14s var(--ds-ease-in-out)}
 .prism-card:hover .prism-mini{transform:translateY(-2px);box-shadow:0 0 0 .5px var(--dsw-alias-border-l4),0 6px 18px #00000024}

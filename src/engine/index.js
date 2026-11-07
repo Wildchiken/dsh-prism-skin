@@ -4,10 +4,12 @@
 import { generate } from './generate.js'
 import { BASE_SEED, THEMES, themeById } from './themes.js'
 import { colorWall } from './wall.js'
+import { packOf } from '../shared/state.js'
 
 export { audit, auditSeed, completeSeed, generate, LEGIBILITY, tokenNames } from './generate.js'
 export { BASE_SEED, THEMES, themeById } from './themes.js'
 export { CODE_SCHEMES, codeSchemeById } from './code.js'
+export { effectiveCss, PACK_PREFIX, packOf } from '../shared/state.js'
 export { colorWall, GRADIENTS, gradientWall, imageWall, seedFromWall, SOLIDS, stopsDerived } from './wall.js'
 
 /** 自定义种子对应的主题 id。 */
@@ -36,12 +38,14 @@ export function radiusTokens(radius) {
 
 /**
  * 算出当前设置对应的基底种子。
- * @param {Pick<import('../shared/state.js').Values, 'theme' | 'custom' | 'adjust'> & {wallpaper?: unknown}} values 设置
+ * @param {Pick<import('../shared/state.js').Values, 'theme' | 'custom' | 'adjust'> & {wallpaper?: unknown, library?: import('../shared/state.js').ThemePack[]}} values 设置
  * @returns {Partial<import('../shared/state.js').Seed> | undefined} 种子；不换肤时为 undefined
  */
 export function seedOf(values) {
   const hasAdjust = Object.keys(values.adjust).length > 0
   if (values.theme === CUSTOM_THEME && values.custom !== null) return { ...values.custom, ...values.adjust }
+  const pack = packOf(values)
+  if (pack !== undefined) return { ...pack.seed, ...values.adjust }
   const theme = themeById(values.theme)
   if (theme !== undefined) return { ...theme.seed, ...values.adjust }
   return hasAdjust || (values.wallpaper ?? null) !== null ? { ...BASE_SEED, ...values.adjust } : undefined
@@ -66,14 +70,17 @@ export function resolveTokens(values) {
 
 /**
  * 合成最终的一层：主题 → 我的调整（含圆角）→ 玻璃 → 高级覆盖。
- * @param {Pick<import('../shared/state.js').Values, 'theme' | 'custom' | 'adjust' | 'overrides' | 'wallpaper' | 'glass'> & {radius?: number | null}} values 设置
+ * @param {Pick<import('../shared/state.js').Values, 'theme' | 'custom' | 'adjust' | 'overrides' | 'wallpaper' | 'glass'> & {radius?: number | null, library?: import('../shared/state.js').ThemePack[]}} values 设置
  * @param {(import('./generate.js').Wall & {key?: string}) | null} wall 当前壁纸；还没分析好时传 null，只出不透明的主题
  * @returns {Layer} 结果
  */
 export function resolveLayer(values, wall) {
   const seed = seedOf(values)
-  const hasOverrides = Object.keys(values.overrides).length > 0
-  const radius = radiusTokens(values.radius ?? null)
+  const pack = packOf(values)
+  // 主题自带的覆盖算主题的一部分，用户自己的覆盖再盖在上面
+  const overrides = pack?.overrides === undefined ? values.overrides : { ...pack.overrides, ...values.overrides }
+  const hasOverrides = Object.keys(overrides).length > 0
+  const radius = radiusTokens(values.radius ?? pack?.radius ?? null)
   if (seed === undefined && !hasOverrides && Object.keys(radius).length === 0) return { tokens: null, opaque: null, wall: null }
   const level = values.glass ?? DEFAULT_GLASS
   const active = seed !== undefined && wall !== null && level > 0
@@ -84,10 +91,10 @@ export function resolveLayer(values, wall) {
     opaque = {}
     for (const name of Object.keys(tokens)) {
       const plain = flat[name] ?? { light: '', dark: '' }
-      if (values.overrides[name] === undefined && (plain.light !== tokens[name].light || plain.dark !== tokens[name].dark)) opaque[name] = plain
+      if (overrides[name] === undefined && (plain.light !== tokens[name].light || plain.dark !== tokens[name].dark)) opaque[name] = plain
     }
   }
-  return { tokens: { ...tokens, ...radius, ...values.overrides }, opaque, wall: wall === null ? null : { key: '', ...wall } }
+  return { tokens: { ...tokens, ...radius, ...overrides }, opaque, wall: wall === null ? null : { key: '', ...wall } }
 }
 
 /**

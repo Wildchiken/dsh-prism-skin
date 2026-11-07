@@ -11,7 +11,7 @@ import { defineStore } from '@deepseek-ai/dsh-client-store'
 import { Component, createElement as h, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { BOOT_GLOBAL, CSS_MARK, effectiveTokens, unpackTokens } from '../shared/boot.js'
 import { nextChange } from '../shared/schedule.js'
-import { checkCss, CSS_MAX_LENGTH, layerChange, normalizeOverrides, normalizeSeed, undoChange } from '../shared/state.js'
+import { checkCss, CSS_MAX_LENGTH, effectiveCss, layerChange, LIBRARY_LIMIT, normalizeName, normalizeOverrides, normalizeSeed, undoChange } from '../shared/state.js'
 import { createCore } from './core.js'
 import { detectConflicts, watchConflicts } from './conflicts.js'
 
@@ -245,6 +245,7 @@ const uiStore = defineStore({
     radius: null,
     css: '',
     overrides: {},
+    library: [],
     fonts: null,
     incoming: null,
   }),
@@ -379,8 +380,8 @@ function start(ctx) {
       return null
     }
   }
-  applyCss(core.values().css)
-  ctx.effect(() => core.subscribe(() => applyCss(core.values().css)), 'dsh-prism-skin:css')
+  applyCss(effectiveCss(core.values()))
+  ctx.effect(() => core.subscribe(() => applyCss(effectiveCss(core.values()))), 'dsh-prism-skin:css')
   /** @type {Set<{sync: (next: object) => void}>} */
   const storeActions = new Set()
   const scheme = () => ctx.theme.getTheme().active.colorScheme
@@ -407,6 +408,7 @@ function start(ctx) {
       radius: values.radius,
       css: values.css,
       overrides: values.overrides,
+      library: values.library,
       fonts: fonts(),
       incoming,
     }
@@ -525,7 +527,7 @@ function start(ctx) {
     loadWall,
     loadCustom,
     // 分块共用的存档函数：入口里本来就有，交出去，分块不用各打包一份
-    shared: { checkCss, CSS_MAX_LENGTH, layerChange, undoChange, normalizeOverrides, normalizeSeed, effectiveTokens },
+    shared: { checkCss, CSS_MAX_LENGTH, layerChange, undoChange, normalizeOverrides, normalizeSeed, effectiveTokens, normalizeName, LIBRARY_LIMIT },
     setFont: (role, kind, value) => {
       if (kind === 'size') ctx.theme.setFontSize(role, value)
       else ctx.theme.setFontFamily(role, value)

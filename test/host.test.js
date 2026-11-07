@@ -150,6 +150,16 @@ test('首屏注入：样式里的值来自引擎和清洗过的覆盖，跳不�
   assert.ok(rows.some((row) => row.kind === 'style' && row.text.includes('--ok:url(a:b);')))
 })
 
+test('「我的主题」：写入时清洗，首屏带上主题自带的 CSS，用户的接在后面', async () => {
+  const pack = { id: 'hud001', name: 'HUD', seed: themeById('pine').seed, css: 'body{color:red}', junk: 1 }
+  await post({ patch: { library: entry([pack, { id: 'X', name: 'bad' }]), theme: entry('my-hud001'), css: entry('a{color:blue}') } })
+  const { doc } = await (await api()).json()
+  assert.deepEqual(doc.keys.library.v, [{ id: 'hud001', name: 'HUD', seed: themeById('pine').seed, css: 'body{color:red}' }])
+  const rows = collectRows()
+  assert.ok(rows.some((row) => row.kind === 'style' && row.text.endsWith('body{color:red}\na{color:blue}')))
+  assert.equal(rows.find((row) => row.kind === 'global').value.doc.keys.theme.v, 'my-hud001')
+})
+
 test('首屏注入：读不了设置时不影响页面渲染', () => {
   rmSync(join(home, 'dsh-prism-skin'), { recursive: true, force: true })
   mkdirSync(join(home, 'dsh-prism-skin', 'state.json'), { recursive: true })

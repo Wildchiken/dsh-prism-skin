@@ -9,7 +9,7 @@
 import { createReadStream } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
-import { colorWall, gradientWall, imageWall, resolveLayer } from '../engine/index.js'
+import { colorWall, effectiveCss, gradientWall, imageWall, packOf, resolveLayer } from '../engine/index.js'
 import { bootRows, packLayer } from '../shared/boot.js'
 import { indexAt, nextChange } from '../shared/schedule.js'
 import { docValues, normalizeValues, stampPatch } from '../shared/state.js'
@@ -28,7 +28,7 @@ const API_PREFIX = '/prism-skin/api'
 const WALL_API = `${API_PREFIX}/wallpaper`
 const MAX_BODY_BYTES = 512 * 1024
 const FETCH_TIMEOUT_MS = 20000
-const WRITABLE_KEYS = new Set(['theme', 'custom', 'adjust', 'overrides', 'history', 'wallpaper', 'glass', 'power', 'radius', 'css'])
+const WRITABLE_KEYS = new Set(['theme', 'custom', 'adjust', 'overrides', 'history', 'wallpaper', 'glass', 'power', 'radius', 'css', 'library'])
 
 /**
  * 现在该显示哪张壁纸，以及还有哪些图等着浏览器分析（当前这张和下一张）。
@@ -78,7 +78,7 @@ function layerResolver(walls, now = Date.now) {
   return (doc) => {
     const values = docValues(doc)
     const { wall, needs } = currentWall(values, walls, now())
-    const key = JSON.stringify([values.theme, values.custom, values.adjust, values.overrides, values.glass, values.radius, wall?.key ?? null, wall?.samples ?? null])
+    const key = JSON.stringify([values.theme, values.custom, values.adjust, values.overrides, values.glass, values.radius, packOf(values) ?? null, wall?.key ?? null, wall?.samples ?? null])
     if (key !== lastKey) {
       lastLayer = resolveLayer(values, wall)
       lastKey = key
@@ -338,7 +338,7 @@ export function apply(ctx) {
     // 任何异常都不能挡住页面渲染：顶多这次没有首屏注入，客户端会自己再取一次
     try {
       const doc = store.read()
-      table.push(...bootRows({ doc, layer: layerOf(doc).layer, version: VERSION, css: docValues(doc).css }))
+      table.push(...bootRows({ doc, layer: layerOf(doc).layer, version: VERSION, css: effectiveCss(docValues(doc)) }))
     } catch (error) {
       console.warn('[dsh-prism-skin] 首屏注入失败：', error)
     }

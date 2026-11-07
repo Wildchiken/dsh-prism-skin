@@ -4,6 +4,40 @@
 
 All versions up to 0.3.1 were never published; they were used only for local testing and on the desktop app.
 
+## [0.5.0] - 2026-11-07
+
+### 新增
+
+- 示例主题「赛博朋克 HUD」（`themes/cyberpunk-hud.json`，Release 里也有）：一个主题文件，靠变量覆盖和自定义 CSS 把侧栏、按钮、代码块、消息改成 HUD 框体，带扫描线和收敛的动画，系统开「减少动态效果」时停下。框体依赖宿主内部类名，宿主升级后可能要更新这个文件。
+- README 重写：横幅和十套主题一览图由 `scripts/readme-art.mjs` 用配色引擎现算出 SVG，不再是一排截图；加上示例主题的动图、主题与修改的分层说明。
+
+### 改动
+
+- **主题是一整套**：导入的主题文件（含变量覆盖、自定义 CSS、圆角）带着名字存进新的「我的主题」，在画廊和侧栏面板里和内置主题并列。以前导入后只显示「自定义配色」，CSS 和覆盖还混在「高级覆盖」里，点「宿主默认」或「重置」界面看不出变化。
+- **修改单独一层**：选任何主题（包括「宿主默认」）都整套换上，之前在上面做的修改（微调、圆角、变量覆盖、自定义 CSS）一起清掉，可撤销；对比度和明暗照旧保留。
+- 设置页顶上新增当前主题条：主题名、「已修改」标记、「丢弃修改」「存为我的主题」「恢复默认」。去掉主题、我的调整、高级覆盖三处各自的「重置」按钮。
+- 「恢复默认」清掉主题、修改和背景，回到宿主原样，可撤销；「我的主题」保留。
+- 「我的主题」最多 24 个；卡片悬停时右上角可以删除，要点两次，删除不能撤销。存档新增 `library` 键，不进撤销历史；旧版看不懂这个键会原样保留。
+- 侧栏面板显示当前主题名，改过时加「已修改」。
+- 导出主题文件时带上主题自带的覆盖和 CSS；合起来超过 8192 字符时提示，不导出导不回来的文件。从 dream-skin 迁移的主题也带名字进「我的主题」。
+- 客户端分块合计的体积上限从 150 KB 放宽到 160 KB（实际 155.6 KB）：多出来的在按需加载的设置分块里，开机加载的入口仍在 25 KB 以内。
+
+### Added
+
+- Example theme "Cyberpunk HUD" (`themes/cyberpunk-hud.json`, also attached to the release): a single theme file whose variable overrides and custom CSS turn the sidebar, buttons, code blocks and messages into HUD frames, with scanlines and restrained motion that stops under Reduce motion. The frames depend on host class names and may need an updated file after a host upgrade.
+- README rewritten: the banner and the ten-theme overview are SVGs computed by `scripts/readme-art.mjs` from the color engine instead of a wall of screenshots; adds the example theme's animation and an explanation of themes vs. your changes.
+
+### Changed
+
+- **Themes are bundles.** An imported theme file (including variable overrides, custom CSS and radius) is saved with its name to the new My themes and shows up next to the built-in themes in the gallery and the sidebar panel. Before, an import showed only as "Custom", its CSS and overrides sat in Advanced overrides, and picking Host default or Reset left the UI looking unchanged.
+- **Your changes are a separate layer.** Picking any theme, Host default included, applies the whole bundle and clears your changes on top (tuning, radius, variable overrides, custom CSS); undoable. Contrast and depth are still kept.
+- A current-theme bar at the top of the settings page shows the name, a Modified marker, and Discard changes / Save as my theme / Restore defaults. The separate Reset buttons for theme, adjustments and advanced overrides are gone.
+- Restore defaults clears the theme, your changes and the background; undoable; My themes are kept.
+- My themes holds up to 24; hover a card to delete it from the top-right corner (two clicks, not undoable). The state file gains a `library` key that is not part of undo history; older versions keep unknown keys as they are.
+- The sidebar panel shows the current theme name and marks it Modified when changed.
+- Exported theme files include the theme's own overrides and CSS; if the combined CSS is over 8192 characters you get a message instead of a file that would not import back. Themes migrated from dream-skin keep their names in My themes.
+- The size limit for all client chunks goes from 150 KB to 160 KB (actual 155.6 KB). The extra is in the lazily loaded settings chunk; the startup entry stays under 25 KB.
+
 ## [0.4.0] - 2026-11-07
 
 首个公开版本。以下是发布前的准备；功能见 0.1.0 至 0.3.1 各节。

@@ -17,7 +17,7 @@ const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 /** 体积硬门（字节）。 */
 export const LIMITS = {
   entry: 25 * 1024,
-  clientTotal: 150 * 1024,
+  clientTotal: 160 * 1024, // 0.5.0 放宽：主题库界面在按需加载的设置分块里，首屏入口不受影响
   anyFile: 262144,
 }
 

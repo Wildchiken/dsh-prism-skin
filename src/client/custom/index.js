@@ -30,8 +30,6 @@ const CSS = `
 .prism-css{min-height:140px}
 .prism-import{min-height:64px}
 .prism-search .prism-input{flex:1 1 auto}
-.prism-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-.prism-row .prism-btn{border:.5px solid var(--dsw-alias-border-l4)}
 .prism-status{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:18px}
 .prism-status[data-bad]{color:var(--dsw-alias-state-error-primary)}
 .prism-sub{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:20px}
@@ -344,7 +342,7 @@ function DreamMigration({ control, lib, t }) {
     }
     const wallFailed = plan.fetch !== null && wallpaper === null
     let ok = true
-    if (plan.theme !== null) ok = control.importTheme({ seed: plan.theme.seed, scheme: plan.theme.scheme }, wallpaper === null ? {} : { wallpaper })
+    if (plan.theme !== null) ok = control.importTheme({ name: plan.theme.name, seed: plan.theme.seed, scheme: plan.theme.scheme }, wallpaper === null ? {} : { wallpaper }) === true
     else if (wallpaper !== null) control.setWallpaper(wallpaper)
     setState({ phase: ok ? 'done' : 'failed', plan, wallFailed })
   }
@@ -424,13 +422,18 @@ export function TransferPanel(props) {
     check(content)
   }
   const apply = () => {
-    const ok = control.importTheme(parsed.file)
+    const result = control.importTheme(parsed.file, { fallbackName: t('import.unnamed') })
     setParsed(null)
     setText('')
-    setStatus(ok ? 'imported' : 'error.apply')
+    setStatus(result === true ? 'imported' : result === 'full' ? 'error.full' : 'error.apply')
   }
   const exportFile = () => {
     const file = control.exportTheme()
+    // 主题自带的 CSS 加上自己的超了上限，导出去也导不回来
+    if (!lib.checkCss(file.css).ok) {
+      setStatus('error.export-css')
+      return
+    }
     download(`${lib.skinId(themeKey).replace(/^prism-/, 'prism-theme-')}.json`, lib.serializeTheme({ name: themeName, ...file }), 'application/json')
     setStatus('started')
   }
@@ -444,7 +447,7 @@ export function TransferPanel(props) {
     const layer = host.core.layer()
     const tokens = lib.effectiveTokens(layer, true) ?? {}
     const id = lib.skinId(themeKey)
-    const files = lib.skinCenterFiles({ id, name: `棱镜 · ${themeName}`, nameEn: `Prism · ${themeName}`, accent: lib.completeSeed(lib.seedOf(values)).accent, version: '1.0.0', tokens, css: values.css })
+    const files = lib.skinCenterFiles({ id, name: `棱镜 · ${themeName}`, nameEn: `Prism · ${themeName}`, accent: lib.completeSeed(lib.seedOf(values)).accent, version: '1.0.0', tokens, css: lib.effectiveCss(values) })
     download(`${id}.zip`, lib.zip([{ name: `${id}/skin.json`, text: files.json }, { name: `${id}/skin.css`, text: files.css }]), 'application/zip')
     setStatus('started')
   }
