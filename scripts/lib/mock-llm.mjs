@@ -39,6 +39,41 @@ def greet(name: str = "棱镜") -> str:
 | 高级覆盖 | 单个变量 | 可以 |
 `
 
+const REPLY_EN = `This is Prism's sample reply, used to check **body text**, \`inline code\`, [links](https://example.com) and code highlighting.
+
+## How the palette works
+
+- A few seeds generate every color
+- Light and dark in pairs, contrast checked automatically
+- No flash on first paint
+
+> Switching themes only changes variables, never the host's structure.
+
+\`\`\`ts
+// Solve the text color: adjust only lightness until every background passes
+export function solve(text: Color, backs: Color[], target = 4.5): Color {
+  const start = toOklch(text)
+  for (let step = 0; step <= 100; step += 1) {
+    const next = { ...start, l: start.l - step * 0.01 }
+    if (backs.every((back) => wcag(next, back) >= target)) return next
+  }
+  return text
+}
+\`\`\`
+
+\`\`\`python
+def greet(name: str = "Prism") -> str:
+    # Return a greeting
+    return f"Hello, {name}!"
+\`\`\`
+
+| Layer | Holds | Resettable |
+| --- | --- | --- |
+| Theme | A set of seeds | Yes |
+| Your changes | On top of the theme | Yes |
+| Background | Wallpaper and glass | Yes |
+`
+
 const MODEL = 'deepseek-mock'
 
 const sse = (res, event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
@@ -58,9 +93,11 @@ function streamReply(res, text) {
 
 /**
  * @param {number} port 端口
+ * @param {{locale?: string}} [options] locale 以 en 开头时回英文示例
  * @returns {Promise<{url: string, requests: string[], close: () => Promise<void>}>} 句柄
  */
-export async function startMockLlm(port) {
+export async function startMockLlm(port, { locale = 'zh' } = {}) {
+  const reply = String(locale).toLowerCase().startsWith('en') ? REPLY_EN : REPLY
   const requests = []
   const server = createServer((req, res) => {
     const chunks = []
@@ -80,7 +117,7 @@ export async function startMockLlm(port) {
         } catch {
           // 请求体解析不了也照常回复
         }
-        if (body.stream === true) return streamReply(res, REPLY)
+        if (body.stream === true) return streamReply(res, reply)
         res.writeHead(200, { 'content-type': 'application/json' })
         res.end(JSON.stringify({ id: 'msg_mock', type: 'message', role: 'assistant', model: MODEL, content: [{ type: 'text', text: '示例会话' }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } }))
         return

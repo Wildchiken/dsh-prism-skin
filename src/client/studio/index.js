@@ -78,7 +78,7 @@ function useChoices(theme, custom, library, t, host) {
     const locale = localeOf(host)
     const rows = [{ id: null, key: 'none', name: t('theme.none'), seed: BASE_SEED }]
     for (const item of THEMES) rows.push({ id: item.id, key: item.id, name: SAFE_NAME(item, locale), seed: item.seed })
-    for (const pack of library) rows.push({ id: PACK_PREFIX + pack.id, key: `my:${pack.id}:${JSON.stringify([pack.seed, pack.overrides])}`, name: pack.name, seed: pack.seed, overrides: pack.overrides, mine: pack.id })
+    for (const pack of library) rows.push({ id: PACK_PREFIX + pack.id, key: `my:${pack.id}:${JSON.stringify([pack.seed, pack.overrides])}`, name: pack.name, seed: Object.keys(pack.seed).length > 0 ? pack.seed : BASE_SEED, overrides: pack.overrides, mine: pack.id })
     if (theme === CUSTOM_THEME && custom !== null) rows.push({ id: CUSTOM_THEME, key: `custom:${JSON.stringify(custom)}`, name: t('theme.custom'), seed: custom })
     return rows
   }, [theme, custom, library, t, host])

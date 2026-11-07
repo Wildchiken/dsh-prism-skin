@@ -1,6 +1,6 @@
 {
   "name": "dsh-prism-skin",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "棱镜 Prism：DeepSeek Harness 换肤插件。种子生成全部配色，亮暗成对、对比度自动达标，支持壁纸、玻璃、省电和深度自定义。A seed-based theme plugin for DeepSeek Harness with guaranteed contrast, wallpapers, glass and deep customization.",
   "type": "module",
   "main": "./lib/index.js",

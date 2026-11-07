@@ -12,11 +12,12 @@ test('「我的主题」：丢掉坏条目和重复 id，坏 CSS 只丢 CSS，�
     { ...PACK, name: '重复' },
     { ...PACK, id: 'BAD!' },
     { ...PACK, id: 'noname', name: '   ' },
-    { ...PACK, id: 'noseed', seed: {} },
+    { ...PACK, id: 'hostpal', seed: {} },
     { ...PACK, id: 'badcss', css: '@import "x"' },
   ])
-  assert.deepEqual(library.map((pack) => pack.id), ['abc123', 'badcss'])
-  assert.equal(library[1].css, undefined)
+  assert.deepEqual(library.map((pack) => pack.id), ['abc123', 'hostpal', 'badcss'])
+  assert.deepEqual(library[1].seed, {})
+  assert.equal(library[2].css, undefined)
   assert.equal(library[0].scheme, 'dark')
   const many = Array.from({ length: LIBRARY_LIMIT + 10 }, (_, i) => ({ ...PACK, id: `p${String(i).padStart(4, '0')}` }))
   assert.equal(normalizeLibrary(many).length, LIBRARY_LIMIT)
@@ -60,4 +61,11 @@ test('「我的主题」不进撤销历史：撤销换主题，主题还留在�
   assert.equal(undo?.theme, null)
   assert.equal(undo !== undefined && 'library' in undo, false)
   assert.equal(normalizeValues({ ...after, ...undo }).library.length, 1)
+})
+
+test('种子为空的「我的主题」（在宿主默认上存下的）：配色沿用宿主，只叠上它自带的覆盖和 CSS', () => {
+  const values = normalizeValues({ theme: 'my-host01', library: [{ id: 'host01', name: '只有 CSS', seed: {}, css: 'a{color:red}', overrides: { '--x': { light: '#000000', dark: '#ffffff' } } }] })
+  assert.equal(seedOf(values), undefined)
+  assert.deepEqual(resolveLayer(values, null).tokens, { '--x': { light: '#000000', dark: '#ffffff' } })
+  assert.equal(effectiveCss(values), 'a{color:red}')
 })

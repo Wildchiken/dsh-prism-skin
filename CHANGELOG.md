@@ -4,6 +4,28 @@
 
 All versions up to 0.3.1 were never published; they were used only for local testing and on the desktop app.
 
+## [0.5.1] - 2026-11-07
+
+### 修复
+
+- 中文界面里「我的调整」「高级覆盖」、存为我的主题、导入导出一共 11 处说明文字显示成了英文。加了单元测试：中文文案里出现整句英文会报错。
+- 在「宿主默认」上「存为我的主题」，选回来时沿用宿主自己的配色（以前会换成和宿主接近的生成配色）。
+
+### 改动
+
+- 冒烟测试和截图脚本启动宿主时，主目录、用户名、时区、工作目录都换成临时的：宿主会把这些写进系统提示词，录素材时不能带出本机信息。本机假模型支持英文示例。
+- README：横幅重画；示例主题的动图在完全隔离的环境里重录，英文版用英文对话；设置页、侧栏面板等截图换成 0.5 的界面。
+
+### Fixed
+
+- In the Chinese UI, 11 descriptions (My adjustments, Advanced overrides, Save as my theme, import/export) showed in English. A unit test now fails if a Chinese string contains an English sentence.
+- A My theme saved on top of Host default now keeps the host's own palette when picked (before, it switched to a close generated palette).
+
+### Changed
+
+- The smoke and screenshot scripts start the host with a throwaway home directory, user name, time zone and working directory: the host writes these into the system prompt, and recordings must not leak local details. The local mock model can answer in English.
+- README: redrawn banner; the example theme's animations were re-recorded in a fully isolated environment, the English one with an English conversation; settings and quick-panel screenshots show the 0.5 UI.
+
 ## [0.5.0] - 2026-11-07
 
 ### 新增

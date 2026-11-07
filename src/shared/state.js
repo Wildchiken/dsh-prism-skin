@@ -51,7 +51,7 @@ const PACK_ID = /^[a-z0-9]{4,16}$/
  * @typedef {object} ThemePack 一整套主题：选它时这些一起生效，用户自己的修改再叠在上面。
  * @property {string} id 小写字母和数字；主题 id 是 `my-<id>`
  * @property {string} name 名字
- * @property {Partial<Seed>} seed 种子
+ * @property {Partial<Seed>} seed 种子；空对象表示沿用宿主自己的配色（在「宿主默认」上存下的）
  * @property {number} [radius] 圆角倍数
  * @property {Values['overrides']} [overrides] 主题自带的变量覆盖
  * @property {string} [css] 主题自带的 CSS
@@ -223,7 +223,7 @@ function normalizePack(raw) {
   if (!isRecord(raw) || typeof raw.id !== 'string' || !PACK_ID.test(raw.id)) return undefined
   const name = normalizeName(raw.name)
   const seed = normalizeSeed(raw.seed)
-  if (name === '' || Object.keys(seed).length === 0) return undefined
+  if (name === '') return undefined
   /** @type {ThemePack} */
   const pack = { id: raw.id, name, seed }
   if (typeof raw.radius === 'number' && Number.isFinite(raw.radius)) pack.radius = Math.round(clampNumber(raw.radius, 0, 2) * 100) / 100

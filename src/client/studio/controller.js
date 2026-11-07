@@ -124,8 +124,10 @@ function build(host) {
   const currentFile = (values) => {
     const pack = packOf(values)
     const radius = values.radius ?? pack?.radius ?? null
+    const seed = seedOf(values)
     return {
-      seed: completeSeed(seedOf(values)),
+      // 宿主默认上没有种子：存成空种子（沿用宿主配色），导出时再补成完整种子
+      seed: seed === undefined ? {} : completeSeed(seed),
       ...(radius === null ? {} : { radius }),
       overrides: { ...pack?.overrides, ...values.overrides },
       css: effectiveCss(values),
@@ -362,7 +364,8 @@ function build(host) {
 
     /** @returns {import('../../shared/share.js').ThemeFile} 当前设置导出成主题文件的内容 */
     exportTheme() {
-      return currentFile(core.values())
+      const file = currentFile(core.values())
+      return Object.keys(file.seed).length > 0 ? file : { ...file, seed: completeSeed(undefined) }
     },
 
     /** 拖动中：立刻看到效果，但不写存档。 */

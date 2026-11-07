@@ -20,71 +20,112 @@ const textWidth = (text, size) => [...text].reduce((sum, ch) => sum + (/[　-鿿
 
 const COPY = {
   zh: {
+    eyebrow: 'DEEPSEEK HARNESS  ·  换肤插件',
     title: ['棱镜', 'Prism'],
-    line1: 'DeepSeek Harness 换肤插件',
-    line2: '一组种子生成整套亮暗配色，文字对比度自动达标',
-    chips: ['10 套主题', '壁纸与玻璃', '我的主题', '每一步可撤销'],
+    line1: '一组种子，生成整套亮暗配色',
+    line2: '文字对比度自动达标  ·  首屏不闪  ·  每一步可撤销',
+    chips: [['10 套主题', 'mist'], ['壁纸与玻璃', 'seasalt'], ['我的主题', 'sakura'], ['示例：赛博朋克 HUD', 'ember']],
     name: (theme) => theme.name.zh,
   },
   en: {
+    eyebrow: 'DEEPSEEK HARNESS  ·  THEME PLUGIN',
     title: ['Prism', '棱镜'],
-    line1: 'A theme plugin for DeepSeek Harness',
-    line2: 'A few seeds, a full light and dark palette, contrast checked',
-    chips: ['10 themes', 'Wallpaper & glass', 'My themes', 'Undo everything'],
+    line1: 'A few seeds, a complete light and dark palette',
+    line2: 'Contrast checked  ·  No flash on load  ·  Undo everything',
+    chips: [['10 themes', 'mist'], ['Wallpaper & glass', 'seasalt'], ['My themes', 'sakura'], ['Example: Cyberpunk HUD', 'ember']],
     name: (theme) => theme.name.en,
   },
 }
 
-/** 横幅：一束白光射进棱镜，散成十套主题的强调色。 */
+/** #rrggbb → 色相（度），用来把十套主题的强调色排成连续光谱。 */
+function hueOf(hex) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  if (max === min) return 0
+  const d = max - min
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4
+  return (h * 60 + 360) % 360
+}
+
+/** 横幅：一束白光射进玻璃棱镜，散成由十套主题强调色排成的光谱。 */
 function banner(copy) {
   const W = 1280
-  const H = 360
-  const prism = { top: [880, 92], left: [784, 262], right: [976, 262] }
-  const entry = [826, 182]
-  const exit = [934, 182]
-  const accents = THEMES.map((theme) => theme.seed.accent)
+  const H = 400
+  const top = [918, 74]
+  const left = [796, 300]
+  const right = [1040, 300]
+  const entry = [850, 196]
+  const exit = [986, 196]
+  // 按色相排，冷色在上、暖色在下，像真的色散
+  const spectrum = THEMES.map((theme) => theme.seed.accent).sort((a, b) => ((hueOf(b) + 60) % 360) - ((hueOf(a) + 60) % 360))
   const defs = []
-  const rays = []
-  accents.forEach((color, i) => {
-    const t = i / (accents.length - 1)
-    const angle = (-24 + 48 * t) * (Math.PI / 180)
-    const reach = W + 40 - exit[0]
-    const y = exit[1] + Math.tan(angle) * reach
-    const half = 7 + Math.abs(t - 0.5) * 6
-    defs.push(`<linearGradient id="r${i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${color}" stop-opacity=".95"/><stop offset=".75" stop-color="${color}" stop-opacity=".35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient>`)
-    rays.push(`<polygon points="${exit[0]},${exit[1] - 1.5} ${exit[0]},${exit[1] + 1.5} ${W + 40},${(y + half).toFixed(1)} ${W + 40},${(y - half).toFixed(1)}" fill="url(#r${i})"/>`)
+  const wedges = []
+  const cores = []
+  const spread = 40
+  const reach = W + 60
+  spectrum.forEach((color, i) => {
+    const a0 = (-spread / 2 + (spread * i) / spectrum.length) * (Math.PI / 180)
+    const a1 = (-spread / 2 + (spread * (i + 1)) / spectrum.length) * (Math.PI / 180)
+    const am = (a0 + a1) / 2
+    const y = (angle) => (exit[1] + Math.tan(angle) * (reach - exit[0])).toFixed(1)
+    defs.push(`<linearGradient id="w${i}" x1="${exit[0]}" y1="0" x2="${reach}" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${color}" stop-opacity=".95"/><stop offset=".45" stop-color="${color}" stop-opacity=".55"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient>`)
+    wedges.push(`<polygon points="${exit[0]},${exit[1]} ${reach},${y(a0 - 0.002)} ${reach},${y(a1 + 0.002)}" fill="url(#w${i})"/>`)
+    cores.push(`<line x1="${exit[0]}" y1="${exit[1]}" x2="${reach}" y2="${y(am)}" stroke="${color}" stroke-width="1.2" stroke-opacity=".9"/>`)
   })
-  let x = 88
-  const chips = copy.chips.map((label) => {
-    const w = Math.round(textWidth(label, 15) + 28)
-    const out = `<g transform="translate(${x} 278)"><rect width="${w}" height="32" rx="16" fill="#ffffff" fill-opacity=".07" stroke="#ffffff" stroke-opacity=".16"/><text x="${w / 2}" y="21" text-anchor="middle" font-size="15" fill="#ffffff" fill-opacity=".86">${esc(label)}</text></g>`
+  let x = 92
+  const accent = (id) => THEMES.find((theme) => theme.id === id).seed.accent
+  const chips = copy.chips.map(([label, id]) => {
+    const w = Math.round(textWidth(label, 14) + 44)
+    const out = `<g transform="translate(${x} 318)"><rect width="${w}" height="32" rx="16" fill="#ffffff" fill-opacity=".045" stroke="#ffffff" stroke-opacity=".13"/><circle cx="16" cy="16" r="4" fill="${accent(id)}"/><circle cx="16" cy="16" r="7" fill="${accent(id)}" fill-opacity=".22"/><text x="29" y="21" font-size="14" fill="#ffffff" fill-opacity=".84">${esc(label)}</text></g>`
     x += w + 10
     return out
   })
   const [main, side] = copy.title
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}">
 <defs>
-<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0c1020"/><stop offset=".55" stop-color="#141228"/><stop offset="1" stop-color="#1d1433"/></linearGradient>
-<linearGradient id="beam" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff" stop-opacity="0"/><stop offset="1" stop-color="#ffffff" stop-opacity=".95"/></linearGradient>
-<linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".16"/><stop offset="1" stop-color="#ffffff" stop-opacity=".04"/></linearGradient>
-<radialGradient id="halo" cx=".7" cy=".5" r=".45"><stop offset="0" stop-color="#7b5ce0" stop-opacity=".22"/><stop offset="1" stop-color="#7b5ce0" stop-opacity="0"/></radialGradient>
-<filter id="blur" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
+<radialGradient id="bg" cx=".72" cy=".42" r=".95"><stop offset="0" stop-color="#191632"/><stop offset=".55" stop-color="#0d0d1c"/><stop offset="1" stop-color="#06070d"/></radialGradient>
+<radialGradient id="g1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(960 150) scale(470 300)"><stop offset="0" stop-color="#7b5ce0" stop-opacity=".32"/><stop offset="1" stop-color="#7b5ce0" stop-opacity="0"/></radialGradient>
+<radialGradient id="g2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1180 380) scale(380 220)"><stop offset="0" stop-color="#22a7c9" stop-opacity=".16"/><stop offset="1" stop-color="#22a7c9" stop-opacity="0"/></radialGradient>
+<radialGradient id="g3" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(140 420) scale(420 260)"><stop offset="0" stop-color="#d6557f" stop-opacity=".12"/><stop offset="1" stop-color="#d6557f" stop-opacity="0"/></radialGradient>
+<radialGradient id="vig" cx=".5" cy=".5" r=".75"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></radialGradient>
+<linearGradient id="title" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#cfc7ff"/></linearGradient>
+<linearGradient id="beam" x1="640" y1="0" x2="${entry[0]}" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff" stop-opacity="0"/><stop offset=".7" stop-color="#ffffff" stop-opacity=".75"/><stop offset="1" stop-color="#ffffff"/></linearGradient>
+<linearGradient id="inner" x1="${entry[0]}" y1="0" x2="${exit[0]}" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff" stop-opacity=".85"/><stop offset="1" stop-color="#e9e3ff" stop-opacity=".95"/></linearGradient>
+<linearGradient id="glass" x1="0" y1="${top[1]}" x2="0" y2="${left[1]}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff" stop-opacity=".2"/><stop offset=".6" stop-color="#ffffff" stop-opacity=".07"/><stop offset="1" stop-color="#ffffff" stop-opacity=".03"/></linearGradient>
+<linearGradient id="edge" x1="0" y1="${top[1]}" x2="0" y2="${left[1]}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffffff" stop-opacity=".95"/><stop offset="1" stop-color="#ffffff" stop-opacity=".28"/></linearGradient>
+<radialGradient id="bloom" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(${exit[0]} ${exit[1]}) scale(38)"><stop offset="0" stop-color="#ffffff" stop-opacity=".42"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
+<filter id="soft" x="-10%" y="-60%" width="120%" height="220%"><feGaussianBlur stdDeviation="14"/></filter>
+<filter id="haze" x="-5%" y="-50%" width="110%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
+<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="3" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .055 0"/></filter>
 <clipPath id="card"><rect width="${W}" height="${H}" rx="24"/></clipPath>
 ${defs.join('\n')}
 </defs>
 <g clip-path="url(#card)">
 <rect width="${W}" height="${H}" fill="url(#bg)"/>
-<rect width="${W}" height="${H}" fill="url(#halo)"/>
-<g filter="url(#blur)" opacity=".75">${rays.join('')}</g>
-<g>${rays.join('')}</g>
-<polygon points="600,214 600,220 ${entry[0]},${entry[1] + 2} ${entry[0]},${entry[1] - 2}" fill="url(#beam)"/>
-<polygon points="${prism.top} ${prism.right} ${prism.left}" fill="url(#glass)" stroke="#ffffff" stroke-opacity=".55" stroke-width="1.5" stroke-linejoin="round"/>
-<polyline points="${prism.top[0]},${prism.top[1] + 22} ${prism.left[0] + 24},${prism.left[1] - 10}" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="1"/>
-<text x="88" y="148" fill="#ffffff"><tspan font-size="76" font-weight="700">${esc(main)}</tspan><tspan dx="18" font-size="42" font-weight="300" fill-opacity=".62">${esc(side)}</tspan></text>
-<text x="90" y="198" font-size="26" fill="#ffffff" fill-opacity=".9">${esc(copy.line1)}</text>
-<text x="90" y="238" font-size="19" fill="#ffffff" fill-opacity=".58">${esc(copy.line2)}</text>
+<rect width="${W}" height="${H}" fill="url(#g1)"/>
+<rect width="${W}" height="${H}" fill="url(#g2)"/>
+<rect width="${W}" height="${H}" fill="url(#g3)"/>
+<g filter="url(#soft)" opacity=".9">${wedges.join('')}</g>
+<g filter="url(#haze)" opacity=".85">${wedges.join('')}</g>
+<g opacity=".55">${cores.join('')}</g>
+<polygon points="640,${entry[1] + 20} 640,${entry[1] + 27} ${entry[0]},${entry[1] + 2} ${entry[0]},${entry[1] - 2}" fill="#ffffff" opacity=".35" filter="url(#haze)"/>
+<polygon points="640,${entry[1] + 22} 640,${entry[1] + 25} ${entry[0]},${entry[1] + 1} ${entry[0]},${entry[1] - 1}" fill="url(#beam)"/>
+<polygon points="${top} ${right} ${left}" fill="url(#glass)"/>
+<polygon points="${entry[0]},${entry[1] - 2} ${exit[0]},${exit[1] - 5} ${exit[0]},${exit[1] + 5} ${entry[0]},${entry[1] + 2}" fill="url(#inner)" opacity=".55"/>
+<polygon points="${top} ${right} ${left}" fill="none" stroke="url(#edge)" stroke-width="1.6" stroke-linejoin="round"/>
+<line x1="${top[0] - 6}" y1="${top[1] + 24}" x2="${left[0] + 30}" y2="${left[1] - 14}" stroke="#ffffff" stroke-opacity=".35" stroke-width="1"/>
+<line x1="${top[0] + 10}" y1="${top[1] + 40}" x2="${right[0] - 36}" y2="${right[1] - 20}" stroke="#ffffff" stroke-opacity=".12" stroke-width="1"/>
+<rect x="${exit[0] - 38}" y="${exit[1] - 38}" width="76" height="76" fill="url(#bloom)"/>
+<rect width="${W}" height="${H}" filter="url(#grain)"/>
+<rect width="${W}" height="${H}" fill="url(#vig)"/>
+<text x="94" y="112" font-size="13" letter-spacing="3.2" fill="#ffffff" fill-opacity=".5">${esc(copy.eyebrow)}</text>
+<text x="90" y="200" fill="url(#title)"><tspan font-size="88" font-weight="800" letter-spacing="2">${esc(main)}</tspan><tspan dx="22" font-size="44" font-weight="300" fill="#ffffff" fill-opacity=".5" letter-spacing="1">${esc(side)}</tspan></text>
+<text x="93" y="250" font-size="24" fill="#ffffff" fill-opacity=".92">${esc(copy.line1)}</text>
+<text x="93" y="284" font-size="16" fill="#ffffff" fill-opacity=".5" letter-spacing=".3">${esc(copy.line2)}</text>
 ${chips.join('\n')}
 </g>
+<rect x=".5" y=".5" width="${W - 1}" height="${H - 1}" rx="23.5" fill="none" stroke="#ffffff" stroke-opacity=".08"/>
 </svg>
 `
 }

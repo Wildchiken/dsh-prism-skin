@@ -62,8 +62,14 @@ const cli = (hostDir) => join(hostDir, 'node_modules/.bin/dsh')
  */
 export async function startServer(hostDir, home, port, extraEnv = {}) {
   // 默认给一个假 Key（指向本机不可达的地址）：没有凭据时宿主会弹「Get started」引导，挡住整个页面
-  const env = { ...process.env, DEEPSEEK_API_KEY: 'prism-test-key', DEEPSEEK_BASE_URL: 'http://127.0.0.1:9/anthropic', ...extraEnv, DSH_HOME: home }
-  const child = spawn(cli(hostDir), ['--profile', 'web', '--port', String(port), '--no-open'], { env, stdio: ['ignore', 'pipe', 'pipe'] })
+  // 和真实环境完全隔开：宿主会把主目录、工作目录、时区、技能列表写进系统提示词（轨迹页能看到），
+  // 截图和录屏不能带出这些，所以主目录、用户名、时区、工作目录都换成临时的
+  const fakeHome = join(home, 'home')
+  const work = join(home, 'work')
+  mkdirSync(fakeHome, { recursive: true })
+  mkdirSync(work, { recursive: true })
+  const env = { ...process.env, DEEPSEEK_API_KEY: 'prism-test-key', DEEPSEEK_BASE_URL: 'http://127.0.0.1:9/anthropic', HOME: fakeHome, USER: 'demo', LOGNAME: 'demo', TZ: 'UTC', ...extraEnv, DSH_HOME: home }
+  const child = spawn(cli(hostDir), ['--profile', 'web', '--port', String(port), '--no-open'], { env, cwd: work, stdio: ['ignore', 'pipe', 'pipe'] })
   let log = ''
   const onData = (chunk) => {
     log += chunk.toString()

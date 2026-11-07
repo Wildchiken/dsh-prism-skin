@@ -45,7 +45,8 @@ export function seedOf(values) {
   const hasAdjust = Object.keys(values.adjust).length > 0
   if (values.theme === CUSTOM_THEME && values.custom !== null) return { ...values.custom, ...values.adjust }
   const pack = packOf(values)
-  if (pack !== undefined) return { ...pack.seed, ...values.adjust }
+  // 种子为空的「我的主题」沿用宿主配色，和宿主默认一样处理
+  if (pack !== undefined && Object.keys(pack.seed).length > 0) return { ...pack.seed, ...values.adjust }
   const theme = themeById(values.theme)
   if (theme !== undefined) return { ...theme.seed, ...values.adjust }
   return hasAdjust || (values.wallpaper ?? null) !== null ? { ...BASE_SEED, ...values.adjust } : undefined
