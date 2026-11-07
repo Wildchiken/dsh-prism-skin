@@ -1,0 +1,84 @@
+{
+  "name": "dsh-prism-skin",
+  "version": "0.4.0",
+  "description": "棱镜 Prism：DeepSeek Harness 换肤插件。种子生成全部配色，亮暗成对、对比度自动达标，支持壁纸、玻璃、省电和深度自定义。A seed-based theme plugin for DeepSeek Harness with guaranteed contrast, wallpapers, glass and deep customization.",
+  "type": "module",
+  "main": "./lib/index.js",
+  "license": "MIT",
+  "author": "Wildchiken",
+  "homepage": "https://github.com/Wildchiken/dsh-prism-skin#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Wildchiken/dsh-prism-skin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Wildchiken/dsh-prism-skin/issues"
+  },
+  "icon": "./icon.svg",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "lib/*.js",
+    "locale/*.json",
+    "icon.svg",
+    "cordis.patch.yml",
+    "README.md",
+    "README.en.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "dsh",
+    "theme",
+    "skin",
+    "wallpaper",
+    "color-scheme",
+    "dark-mode",
+    "oklch",
+    "wcag",
+    "apca",
+    "换肤",
+    "主题",
+    "壁纸"
+  ],
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.2.1-rc.5 <0.2.2-0 || >=0.2.2-rc.1 <0.3.0-0"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test \"test/*.test.js\"",
+    "audit:contrast": "node scripts/contrast-audit.mjs",
+    "tokens:extract": "node scripts/extract-host-tokens.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "shots": "node scripts/shots.mjs",
+    "prepack": "node scripts/build.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-theme",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-settings-general",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

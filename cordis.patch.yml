@@ -1,0 +1,4 @@
+# 把棱镜挂进 profile：host 半和 client 半都由这一行带起来。
+- insert:
+    - id: prism-skin
+      name: dsh-prism-skin

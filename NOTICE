@@ -1,0 +1,52 @@
+dsh-prism-skin（棱镜）
+Copyright (c) 2026 dsh-prism-skin contributors
+MIT License, see LICENSE.
+
+致谢 / Acknowledgements
+-----------------------
+
+配色思路参考了 dsh-dream-skin（MIT）：用 OKLCH 明度阶梯生成表面色，再用 WCAG / APCA
+对比度求解调整文字色。棱镜的代码全部重写，没有复制 dsh-dream-skin 的源代码。
+
+The palette approach draws on dsh-dream-skin (MIT): surfaces generated from an
+OKLCH lightness ladder, and text colors adjusted by a WCAG / APCA contrast
+solver. Prism's code is a complete rewrite; no dsh-dream-skin source code was
+copied.
+
+为了兼容迁移，`src/engine/convert.js` 里记录了 dsh-dream-skin 11.4.1 八套内置主题的
+明暗、画布底色和强调色（共 24 个值），用来把这些主题换算成棱镜的种子。这些数据取自
+dsh-dream-skin，其版权声明如下：
+
+For migration compatibility, `src/engine/convert.js` records the mode, canvas
+color and accent color of dsh-dream-skin 11.4.1's eight built-in themes (24
+values in total), used to convert those themes into Prism seeds. That data comes
+from dsh-dream-skin, whose copyright notice follows:
+
+    MIT License
+
+    Copyright (c) 2026 dsh-dream-skin contributors
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+代码配色方案的颜色值取自各方案公开的色板（GitHub、One、Solarized、Dracula、Monokai、
+Nord），只用作起始颜色，生成时会按对比度调整明度。
+
+The code color schemes start from the publicly documented palettes of GitHub,
+One, Solarized, Dracula, Monokai and Nord; lightness is adjusted for contrast
+when the palette is generated.
