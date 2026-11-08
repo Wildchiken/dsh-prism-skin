@@ -1,12 +1,10 @@
 /**
  * 界面背后的操作：换主题、微调、撤销、预览。
  *
- * 所有改动都走 `commit`：算出新变量，交给设置中枢落盘和同步。悬停预览和滑块拖动中
- * 只改宿主的变量层，不写存档也不进撤销历史，松手或点击才算数。
+ * 所有改动都走 `commit`：算出新变量，交给设置中枢落盘和同步。滑块拖动中只改宿主的变量层，
+ * 不写存档也不进撤销历史，松手才算数。悬停不预览：预览会换掉整套界面，鼠标下面的东西跟着动，来回闪。
  */
 import { CUSTOM_THEME, audit, auditSeed, colorWall, completeSeed, DEFAULT_GLASS, effectiveCss, gradientWall, imageWall, PACK_PREFIX, packOf, randomSeed, resolveLayer, seedFromWall, seedOf } from '../../engine/index.js'
-
-const PREVIEW_DELAY_MS = 70
 
 /** 切换主题时保留的微调：这两项是个人偏好，不属于某个主题。其余修改（变量覆盖、CSS、圆角）换主题时清掉。 */
 const KEEP_ON_SWITCH = ['contrast', 'depth']
@@ -29,7 +27,6 @@ export function createController(host) {
 function build(host) {
   const { core } = host
   const { checkCss, effectiveTokens, layerChange, undoChange, normalizeName, LIBRARY_LIMIT } = host.shared
-  let previewTimer
   let bare = false
 
   /**
@@ -85,12 +82,7 @@ function build(host) {
   }
 
   const clearPreview = () => {
-    if (previewTimer !== undefined) {
-      clearTimeout(previewTimer)
-      previewTimer = undefined
-    }
     host.preview(null)
-    host.previewCss?.(null)
     if (bare) {
       bare = false
       host.setMainLayer(effectiveTokens(core.layer(), host.reduced()))
@@ -133,6 +125,7 @@ function build(host) {
       overrides: { ...pack?.overrides, ...values.overrides },
       css: effectiveCss(values),
       ...(pack?.scheme === undefined ? {} : { scheme: pack.scheme }),
+      ...(pack?.material === undefined ? {} : { material: pack.material }),
     }
   }
 
@@ -302,15 +295,6 @@ function build(host) {
       clearPreview()
     },
 
-    /** 悬停预览代码配色。 */
-    hoverCode(id) {
-      const values = core.values()
-      const adjust = { ...values.adjust }
-      if (id === null) delete adjust.code
-      else adjust.code = id
-      show(visible({ ...values, adjust }))
-    },
-
     /** 拖动圆角：只预览。 */
     liveRadius(radius) {
       show(visible({ ...core.values(), radius }))
@@ -364,6 +348,7 @@ function build(host) {
         ...(file.overrides === undefined || Object.keys(file.overrides).length === 0 ? {} : { overrides: file.overrides }),
         ...(file.css === undefined || file.css === '' ? {} : { css: file.css }),
         ...(file.scheme === undefined ? {} : { scheme: file.scheme }),
+        ...(file.material === undefined ? {} : { material: file.material }),
       })
       if (stored === null) return 'full'
       // 整套换上，原来的修改清掉（可撤销）
@@ -423,19 +408,6 @@ function build(host) {
       delete adjust[field]
       commit({ adjust })
       clearPreview()
-    },
-
-    /** 悬停预览（延迟一点点，鼠标划过时不会闪一路）。 */
-    hoverTheme(id) {
-      if (previewTimer !== undefined) clearTimeout(previewTimer)
-      previewTimer = setTimeout(() => {
-        previewTimer = undefined
-        const values = core.values()
-        const next = { ...values, ...layersForTheme(id, id === CUSTOM_THEME ? values.custom : null) }
-        show(visible(next))
-        // 主题自带的 CSS 也一起预览（「我的主题」里的框体之类），点下去和悬停时看到的一样
-        host.previewCss?.(effectiveCss(next))
-      }, PREVIEW_DELAY_MS)
     },
 
     clearPreview,

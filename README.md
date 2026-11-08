@@ -18,6 +18,27 @@
 </p>
 <p align="center"><sub>十套内置主题：每张卡左上半是亮色、右下半是暗色。图里的颜色由配色引擎现算，不是截图。</sub></p>
 
+## 示例：Material 3
+
+照安卓 16 的 Material 3（Material You）做的一套主题，同样是一个主题文件：
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Wildchiken/dsh-prism-skin/main/docs/assets/material-3.png" alt="Material 3：左边亮色、右边暗色" width="100%">
+</p>
+
+- **颜色跟着强调色变**：主题里写的不是颜色，而是「宿主变量 → Material 配色角色」。棱镜用 Google 开源的 material-color-utilities 按当前强调色现算整套配色（Tonal Spot，安卓默认的方案），亮暗成对。侧栏面板里点一下就换：
+
+  <p align="center">
+    <img src="https://raw.githubusercontent.com/Wildchiken/dsh-prism-skin/main/docs/assets/material-3-accents.png" alt="同一套主题换三种强调色：蓝、绿、玫红" width="100%">
+  </p>
+
+- **照官方开源实现**：组件尺寸、圆角层级、状态层、弹簧动效取自 material-web 的设计变量；侧栏和设置页的分段列表、开关照安卓 16 设置页（AOSP SettingsLib）。没有阴影，层次只靠底色深浅。
+- **图标、水波纹、字体**：宿主的图标全部换成 Material Symbols（圆角）；按下时水波纹从按下的地方扩散。本机装了 Google Sans Flex、Google Sans Code 就用它们，没装就用系统字体。
+- **怎么装**：需要棱镜 0.7.0 及以上。下载 [`material-3.json`](https://github.com/Wildchiken/dsh-prism-skin/releases/latest/download/material-3.json)，在 **设置 → 棱镜 → 导入导出** 里导入并应用。
+
+> [!NOTE]
+> 和下面的赛博朋克 HUD 一样，组件样式靠自定义 CSS 匹配宿主内部的类名，DSH 升级后可能有部分失效（配色不受影响）。`node scripts/audit-theme.mjs` 能逐个画面检查（见下面「开发」）。这套主题不是 Google 出品；Material Design 和 Material Symbols 是 Google 的开源设计系统（Apache-2.0）。
+
 ## 示例：赛博朋克 HUD
 
 主题文件不只能带配色，还能带变量覆盖和自定义 CSS。下面这套「赛博朋克 HUD」就是一个主题文件，导入即用：
@@ -74,7 +95,7 @@ flowchart LR
 - **换主题就是整套换**：选哪张卡就是哪套的原样，之前的修改一起清掉（对比度和明暗两项个人偏好保留）。
 - **修改想留下**：点「存为我的主题」，起个名字，连同修改存成一套。「我的主题」最多 24 个，可以改名；卡片悬停时右上角可以删除（要点两次），删了几秒内能撤销。
 - **想全部回到原样**：点「恢复默认」，主题、修改、背景一起清掉。
-- **每一步都能撤销**，悬停预览、点击才生效。
+- **每一步都能撤销**，点击才生效；悬停只显示名字，不会把整个界面换来换去。
 
 ## 能做什么
 
@@ -91,10 +112,10 @@ flowchart LR
 **自定义**
 - 字体和字号（和「通用 → 字体」是同一份设置）、圆角倍数。
 - 按名字搜宿主全部变量直接改，能看到当前值和来自哪一层。
-- 自定义 CSS：最多 8192 字符，禁止 `@import` 和外部链接的 `url()`。省电时 `body` 上会有 `data-prism-saving` 属性，写动画的主题可以用 `:not([data-prism-saving])` 在省电时停下。
+- 自定义 CSS：最多 16384 字符，禁止 `@import` 和外部链接的 `url()`。省电时 `body` 上会有 `data-prism-saving` 属性，写动画的主题可以用 `:not([data-prism-saving])` 在省电时停下。元素上写 `--prism-ripple: 1` 的，按下时棱镜会写上 `--prism-x` / `--prism-y`（按下点的位置），水波纹可以从按下的地方扩散。
 
 **导入导出**
-- 主题文件是一小段 JSON：配色种子，可以带变量覆盖、自定义 CSS 和圆角。导入后进「我的主题」。
+- 主题文件是一小段 JSON：配色种子，可以带变量覆盖、自定义 CSS、圆角和 Material 动态取色规则（按强调色现算整套 Material 3 配色）。导入后进「我的主题」。
 - 分享码很短，也能放进链接。
 - 一键从 dream-skin 迁移，兼容导入 dream-skin 主题包；可以导出成 skin-center 皮肤（zip）。
 
@@ -153,6 +174,9 @@ npm run build                  # 产物在 lib/
 npm run audit:contrast         # 逐套主题、逐套代码配色打印对比度审计
 node scripts/readme-art.mjs    # 重画 README 的横幅和主题一览图
 node scripts/check-theme.mjs --host <宿主目录> --theme themes/cyberpunk-hud.json   # 主题框体在这个宿主版本上还能不能匹配
+node scripts/audit-theme.mjs --host <宿主目录> --theme themes/material-3.json --radii 0,4,8,12,16,20,28 --icons   # 主题体检：逐个画面比有无主题、查对比度和悬停，默认中文界面（--locale en-US 看英文），结果在 .cache/audit
+node themes/src/fetch-symbols.mjs && node themes/src/material-3.mjs   # 重新生成 Material 3 示例主题（先取图标）
+node themes/src/cyberpunk-hud.mjs   # 重新生成赛博朋克 HUD 示例主题
 ```
 
 真宿主上的冒烟和截图需要一份本地安装的宿主（`npm install @deepseek-ai/dsh@<版本>`）：

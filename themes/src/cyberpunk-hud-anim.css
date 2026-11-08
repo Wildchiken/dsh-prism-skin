@@ -1,0 +1,12 @@
+@keyframes hs{from{transform:translateY(-12vh)}to{transform:translateY(112vh)}}
+@keyframes hf{0%,93%,95%,100%{opacity:1}94%{opacity:.55}}
+@keyframes hg{0%{text-shadow:-1px 0 #5ef6ff,1px 0 #ff5a4f}50%{text-shadow:1px 0 #5ef6ff,-1px 0 #ff5a4f}}
+@keyframes hb{0%{opacity:.45}50%{opacity:1}75%{opacity:.8}}
+@keyframes hp{50%{filter:brightness(1.18)}}
+@media (prefers-reduced-motion:no-preference){[data-ds-dark-theme]:not([data-prism-saving]){
+&::before,html:has(&)::after{animation:hf 9s steps(1) infinite}
+html:has(&)::before{content:"";position:fixed;inset:0 0 auto;height:12vh;pointer-events:none;z-index:2147482998;background:linear-gradient(#0000,rgba(255,90,79,.03) 75%,rgba(255,90,79,.07) 99%,rgba(255,90,79,.22));animation:hs 12s linear infinite;will-change:transform}
+:is(button[class*=_newSession],[class*=_panelRow],[role=treeitem],[role=tab]):hover{animation:hg .2s steps(1)}
+:is([role=treeitem],[role=tab])[aria-selected=true]{animation:hb .3s steps(1)}
+[data-composer-card]:focus-within [class*=_primary]{animation:hp 2.4s ease-in-out infinite}
+}}

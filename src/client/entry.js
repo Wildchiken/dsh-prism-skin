@@ -7,11 +7,12 @@
  *
  * 宿主不隔离插件工厂，这里一处抛错整站都会挂，所以每个钩子都包 try/catch。
  */
+import { installPress, PRESS_CSS } from './press.js'
 import { defineStore } from '@deepseek-ai/dsh-client-store'
 import { Component, createElement as h, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { BOOT_GLOBAL, CSS_MARK, effectiveTokens, unpackTokens } from '../shared/boot.js'
 import { nextChange } from '../shared/schedule.js'
-import { checkCss, CSS_MAX_LENGTH, effectiveCss, layerChange, LIBRARY_LIMIT, normalizeName, normalizeOverrides, normalizeSeed, undoChange } from '../shared/state.js'
+import { checkCss, CSS_MAX_LENGTH, effectiveCss, layerChange, LIBRARY_LIMIT, normalizeMaterial, normalizeName, normalizeOverrides, normalizeSeed, undoChange } from '../shared/state.js'
 import { createCore } from './core.js'
 import { detectConflicts, watchConflicts } from './conflicts.js'
 
@@ -161,9 +162,10 @@ const QUICK_CSS = '.prism-quick{box-sizing:border-box;display:flex;align-items:c
 if (typeof document !== 'undefined' && document.querySelector('style[data-prism-quick-css]') === null) {
   const tag = document.createElement('style')
   tag.setAttribute('data-prism-quick-css', '')
-  tag.textContent = QUICK_CSS
+  tag.textContent = QUICK_CSS + PRESS_CSS
   document.head.append(tag)
 }
+if (typeof document !== 'undefined') installPress(document)
 
 /** 侧栏按钮：只有它在开机时就渲染，面板要点开才加载。 */
 function QuickSeat(props) {
@@ -389,13 +391,7 @@ function start(ctx) {
     }
   }
   applyCss(effectiveCss(core.values()))
-  /** 悬停预览时临时换上的 CSS；null 表示没在预览。 */
-  let cssPreview = null
-  const previewCss = (css) => {
-    cssPreview = css
-    applyCss(css ?? effectiveCss(core.values()))
-  }
-  ctx.effect(() => core.subscribe(() => applyCss(cssPreview ?? effectiveCss(core.values()))), 'dsh-prism-skin:css')
+  ctx.effect(() => core.subscribe(() => applyCss(effectiveCss(core.values()))), 'dsh-prism-skin:css')
   /** @type {Set<{sync: (next: object) => void}>} */
   const storeActions = new Set()
   const scheme = () => ctx.theme.getTheme().active.colorScheme
@@ -533,7 +529,6 @@ function start(ctx) {
   const host = {
     core,
     preview,
-    previewCss,
     locale: ctx.locale,
     registerLocale: (ns, dicts) => ctx.effect(() => ctx.locale.register(ns, dicts), `dsh-prism-skin:${ns}`),
     setMainLayer: applyTokens,
@@ -543,7 +538,7 @@ function start(ctx) {
     loadWall,
     loadCustom,
     // 分块共用的存档函数：入口里本来就有，交出去，分块不用各打包一份
-    shared: { checkCss, CSS_MAX_LENGTH, layerChange, undoChange, normalizeOverrides, normalizeSeed, effectiveTokens, normalizeName, LIBRARY_LIMIT },
+    shared: { checkCss, CSS_MAX_LENGTH, layerChange, undoChange, normalizeOverrides, normalizeSeed, normalizeMaterial, effectiveTokens, normalizeName, LIBRARY_LIMIT },
     setFont: (role, kind, value) => {
       if (kind === 'size') ctx.theme.setFontSize(role, value)
       else ctx.theme.setFontFamily(role, value)

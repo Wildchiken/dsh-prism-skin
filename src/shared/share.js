@@ -1,7 +1,7 @@
 /**
  * 主题文件和分享码。
  *
- * 主题文件就是种子 JSON（几百字节），可选带上圆角、高级覆盖、自定义 CSS、字体。
+ * 主题文件就是种子 JSON（几百字节），可选带上圆角、高级覆盖、自定义 CSS、字体、Material 动态取色规则。
  * 分享码只编码种子和圆角，形如 `prism1.212.95.40.0.-10.4b78e6.0.one.120`，放进链接的 `#` 后面也很短。
  * 导入时一律先过清洗，任何一项不合法就整份拒绝，不会只导进去一半。
  *
@@ -22,6 +22,7 @@ const CODE_PREFIX = 'prism1.'
  * @property {Record<string, {light: string, dark: string}>} [overrides] 高级覆盖
  * @property {string} [css] 自定义 CSS
  * @property {{text?: string, code?: string, size?: number, codeSize?: number}} [font] 字体（写进宿主自己的字体设置）
+ * @property {import('./material.js').Material} [material] Material 动态取色（按当前强调色现算的变量）
  */
 
 const round = (value, digits = 3) => Math.round(value * 10 ** digits) / 10 ** digits
@@ -60,6 +61,7 @@ export function serializeTheme(file) {
   if (file.overrides !== undefined && Object.keys(file.overrides).length > 0) out.overrides = file.overrides
   if (file.css !== undefined && file.css !== '') out.css = file.css
   if (file.font !== undefined && Object.keys(file.font).length > 0) out.font = file.font
+  if (file.material !== undefined) out.material = file.material
   return JSON.stringify(out, null, 1)
 }
 
@@ -84,7 +86,7 @@ export function createShare(state) {
  * @param {Parameters<typeof createShare>[0]} state 存档的清洗函数
  * @returns {{ok: true, file: ThemeFile} | {ok: false, code: 'not-theme' | 'bad-seed' | 'bad-css' | 'bad-overrides' | 'bad-font'}} 结果
  */
-export function parseThemeFile(data, { checkCss, normalizeOverrides, normalizeSeed }) {
+export function parseThemeFile(data, { checkCss, normalizeOverrides, normalizeSeed, normalizeMaterial }) {
   if (data === null || typeof data !== 'object' || Array.isArray(data) || /** @type {any} */ (data).prism !== FILE_VERSION) return { ok: false, code: 'not-theme' }
   const raw = /** @type {Record<string, any>} */ (data)
   const seed = normalizeSeed(raw.seed)
@@ -111,6 +113,12 @@ export function parseThemeFile(data, { checkCss, normalizeOverrides, normalizeSe
     const font = normalizeFont(raw.font)
     if (raw.font === null || typeof raw.font !== 'object' || Object.keys(font).length !== Object.keys(raw.font).length) return { ok: false, code: 'bad-font' }
     file.font = font
+  }
+  if (raw.material !== undefined) {
+    const material = normalizeMaterial(raw.material)
+    const count = raw.material?.roles !== null && typeof raw.material?.roles === 'object' ? Object.keys(raw.material.roles).length : -1
+    if (material === undefined || Object.keys(material.roles).length !== count) return { ok: false, code: 'bad-overrides' }
+    file.material = material
   }
   return { ok: true, file }
 }

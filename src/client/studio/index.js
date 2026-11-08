@@ -179,8 +179,6 @@ function PlainCard({ choice, selected, scheme, control }) {
       'aria-pressed': selected,
       'data-prism-theme': choice.id ?? 'none',
       onClick: () => control.pickTheme(choice.id),
-      onPointerEnter: () => control.hoverTheme(choice.id),
-      onPointerLeave: control.clearPreview,
     },
     h(
       'div',
@@ -437,7 +435,7 @@ function FontGroup({ host, t, useStore }) {
 /** 代码配色：可以独立于主题选一套经典方案，对比度照样自动达标。 */
 function CodeGroup({ control, t, adjust }) {
   const current = adjust.code ?? null
-  const chip = (id, label) => h('button', { key: id ?? 'follow', type: 'button', className: 'prism-chip', 'aria-pressed': current === id, 'data-prism-code': id ?? 'follow', onClick: () => control.setCode(id), onPointerEnter: () => control.hoverCode(id), onPointerLeave: control.clearPreview }, label)
+  const chip = (id, label) => h('button', { key: id ?? 'follow', type: 'button', className: 'prism-chip', 'aria-pressed': current === id, 'data-prism-code': id ?? 'follow', onClick: () => control.setCode(id) }, label)
   const tok = (name, text) => h('span', { style: { color: `var(--shiki-token-${name})` } }, text)
   return h(
     'div',
@@ -614,9 +612,12 @@ export function QuickPanel(props) {
   const custom = useStore((state) => state.custom)
   const scheme = useStore((state) => state.scheme)
   const library = useStore((state) => state.library)
+  const adjust = useStore((state) => state.adjust)
   const modified = useModified(useStore)
   const choices = useChoices(theme, custom, library, t, host)
   const [hovered, setHovered] = useState(undefined)
+  // 带 Material 动态取色的主题：整套配色从强调色算出来，面板里直接给一排强调色
+  const dynamic = library.some((pack) => PACK_PREFIX + pack.id === theme && pack.material !== undefined)
   const [place, setPlace] = useState(undefined)
 
   // 面板挂在 body 上（见下面的 createPortal），位置按按钮实时算：
@@ -680,18 +681,14 @@ export function QuickPanel(props) {
           'data-prism-dot': choice.id ?? 'none',
           style: { background: `linear-gradient(135deg,${colors.canvas} 0 50%,${colors.accent} 50% 100%)` },
           onClick: () => control.pickTheme(choice.id),
-          onPointerEnter: () => {
-            setHovered(choice.name)
-            control.hoverTheme(choice.id)
-          },
-          onPointerLeave: () => {
-            setHovered(undefined)
-            control.clearPreview()
-          },
+          // 悬停只显示名字，不预览：预览会换掉整套界面（字体、图标、尺寸），鼠标下面的东西跟着动，来回闪
+          onPointerEnter: () => setHovered(choice.name),
+          onPointerLeave: () => setHovered(undefined),
         })
       }),
     ),
     h('div', { className: 'prism-panel-name', 'data-prism-panel-name': '' }, label),
+    dynamic ? h('div', { 'data-prism-panel-accent': '' }, h(AccentRow, { control, t, adjust, seed: completeSeed(control.currentSeed()) })) : null,
     h(Notes, { t, useStore }),
     h('div', { className: 'prism-panel-foot' }, t('quick.more')),
   )

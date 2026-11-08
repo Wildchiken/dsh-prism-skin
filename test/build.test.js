@@ -38,9 +38,9 @@ function clientSources(dir = join(root, 'src/client')) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? clientSources(join(dir, entry.name)) : entry.name.endsWith('.js') ? [join(dir, entry.name)] : []))
 }
 
-test('体积门：入口 ≤ 25KB，客户端合计 ≤ 160KB，单文件 < 262144 B', () => {
+test('体积门：入口 ≤ 25KB，客户端合计 ≤ 260KB，单文件 < 262144 B', () => {
   assert.equal(LIMITS.entry, 25 * 1024)
-  assert.equal(LIMITS.clientTotal, 160 * 1024)
+  assert.equal(LIMITS.clientTotal, 260 * 1024)
   assert.equal(LIMITS.anyFile, 262144)
   assert.deepEqual(result.failures, [])
   assert.ok(result.entry <= LIMITS.entry, `入口 ${result.entry} B`)

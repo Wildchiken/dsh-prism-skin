@@ -18,6 +18,27 @@ Themes for DeepSeek Harness (DSH). Pick a theme, or drag a few sliders (hue, chr
 </p>
 <p align="center"><sub>The ten built-in themes: light in the top-left half of each card, dark in the bottom-right. The colors are computed by the engine, not screenshots.</sub></p>
 
+## Example: Material 3
+
+A theme modeled on Material 3 (Material You) as it looks on Android 16, again a single theme file:
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Wildchiken/dsh-prism-skin/main/docs/assets/material-3.en.png" alt="Material 3: light on the left, dark on the right" width="100%">
+</p>
+
+- **Colors follow the accent**: the theme doesn't store colors, it maps host variables to Material color roles. Prism computes the whole palette from the current accent with Google's open-source material-color-utilities (Tonal Spot, Android's default), light and dark in pairs. Change it with one click in the sidebar panel:
+
+  <p align="center">
+    <img src="https://raw.githubusercontent.com/Wildchiken/dsh-prism-skin/main/docs/assets/material-3-accents.en.png" alt="The same theme with three accents: blue, green, rose" width="100%">
+  </p>
+
+- **Based on the official open-source code**: component sizes, the shape scale, state layers and spring motion come from material-web's design tokens; the segmented lists and switches in the sidebar and settings follow the Android 16 settings app (AOSP SettingsLib). No shadows; depth comes from surface tones only.
+- **Icons, ripples, fonts**: every host icon is replaced with Material Symbols (Rounded); the press ripple spreads from where you pressed. Google Sans Flex and Google Sans Code are used if installed, system fonts otherwise.
+- **Install**: needs Prism 0.7.0 or later. Download [`material-3.json`](https://github.com/Wildchiken/dsh-prism-skin/releases/latest/download/material-3.json), then import and apply it in **Settings → Prism → Import & export**.
+
+> [!NOTE]
+> Like the Cyberpunk HUD below, the component styles come from custom CSS that targets the host's internal class names, so a DSH update may break some of them (the colors are unaffected). `node scripts/audit-theme.mjs` checks every screen (see Development below). This theme is not made by Google; Material Design and Material Symbols are Google's open-source design system (Apache-2.0).
+
 ## Example: Cyberpunk HUD
 
 A theme file can carry more than colors: variable overrides and custom CSS too. This Cyberpunk HUD is a single theme file you import:
@@ -74,7 +95,7 @@ flowchart LR
 - **Switching themes swaps the whole bundle**: you get the theme exactly as it ships and your previous changes are cleared (contrast and depth, being personal preferences, are kept).
 - **To keep your changes**, click Save as my theme and give it a name. My themes holds up to 24 and can be renamed; hover a card to delete it from the top-right corner (two clicks), with a few seconds to undo.
 - **To go back to the host as it ships**, click Restore defaults: theme, changes and background are all cleared.
-- **Every step is undoable**; hover to preview, click to apply.
+- **Every step is undoable**; click to apply. Hovering only shows the name, so the interface doesn't flicker between themes.
 
 ## Features
 
@@ -91,10 +112,10 @@ flowchart LR
 **Customization**
 - Fonts and sizes (the same setting as General → Fonts) and a corner-radius multiplier.
 - Search every host variable by name and edit it, seeing its current value and which layer it comes from.
-- Custom CSS: up to 8192 characters; `@import` and external `url()` are blocked. While power saving is on, `body` carries a `data-prism-saving` attribute, so animated themes can stop with `:not([data-prism-saving])`.
+- Custom CSS: up to 16384 characters; `@import` and external `url()` are blocked. While power saving is on, `body` carries a `data-prism-saving` attribute, so animated themes can stop with `:not([data-prism-saving])`. Elements marked with `--prism-ripple: 1` get `--prism-x` / `--prism-y` (the press point) on press, so a ripple can spread from where you pressed.
 
 **Import & export**
-- A theme file is a small JSON: the color seed, optionally with variable overrides, custom CSS and radius. Importing one adds it to My themes.
+- A theme file is a small JSON: the color seed, optionally with variable overrides, custom CSS, radius and Material dynamic color rules (the whole Material 3 palette computed from the accent). Importing one adds it to My themes.
 - Share codes are short enough to put in a link.
 - One-click migration from dream-skin, dream-skin pack import, and export as a Skin Center skin (zip).
 
@@ -153,6 +174,9 @@ npm run build                  # output in lib/
 npm run audit:contrast         # contrast audit per theme and per code scheme
 node scripts/readme-art.mjs    # redraw the README banner and theme overview
 node scripts/check-theme.mjs --host <host dir> --theme themes/cyberpunk-hud.json   # do the theme's frames still match on this host version?
+node scripts/audit-theme.mjs --host <host dir> --theme themes/material-3.json --radii 0,4,8,12,16,20,28 --icons   # theme audit: every screen with vs without the theme, contrast and hover; Chinese UI by default (--locale en-US for English); results in .cache/audit
+node themes/src/fetch-symbols.mjs && node themes/src/material-3.mjs   # regenerate the Material 3 example theme (fetch the icons first)
+node themes/src/cyberpunk-hud.mjs   # regenerate the Cyberpunk HUD example theme
 ```
 
 Smoke tests and screenshots on a real host need a locally installed host (`npm install @deepseek-ai/dsh@<version>`):

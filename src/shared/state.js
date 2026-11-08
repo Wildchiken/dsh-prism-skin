@@ -5,15 +5,20 @@
  * 不同的键不会互相覆盖。看不懂的键原样保留，新版写过的存档旧版不会弄丢。
  */
 
+import { normalizeMaterial } from './material.js'
+
+export { normalizeMaterial }
+
 /** 存档结构版本。 */
 export const SCHEMA = 1
 /** 撤销历史最多留多少步。 */
 export const HISTORY_LIMIT = 30
 /** 高级覆盖最多多少条（防止存档被写爆）。 */
 const OVERRIDES_LIMIT = 600
-const VALUE_MAX_LENGTH = 400
+// 单个变量值的上限：要放得下 Material Symbols 里复杂图标的整条路径（齿轮、太阳这类压缩后 400～650 字）
+const VALUE_MAX_LENGTH = 1024
 /** 自定义 CSS 的上限（字符）。 */
-export const CSS_MAX_LENGTH = 8192
+export const CSS_MAX_LENGTH = 16384
 /** 「我的主题」最多存多少个。 */
 export const LIBRARY_LIMIT = 24
 /** 主题名最长多少字。 */
@@ -56,6 +61,7 @@ const PACK_ID = /^[a-z0-9]{4,16}$/
  * @property {Values['overrides']} [overrides] 主题自带的变量覆盖
  * @property {string} [css] 主题自带的 CSS
  * @property {'light' | 'dark'} [scheme] 主题要求的明暗；选中时宿主跟着切
+ * @property {import('./material.js').Material} [material] Material 动态取色：按当前强调色现算的变量（见 material.js）
  */
 
 /**
@@ -232,6 +238,8 @@ function normalizePack(raw) {
   const css = checkCss(raw.css)
   if (css.ok && css.css !== '') pack.css = css.css
   if (raw.scheme === 'light' || raw.scheme === 'dark') pack.scheme = raw.scheme
+  const material = normalizeMaterial(raw.material)
+  if (material !== undefined) pack.material = material
   return pack
 }
 

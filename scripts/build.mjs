@@ -17,7 +17,9 @@ const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 /** 体积硬门（字节）。 */
 export const LIMITS = {
   entry: 25 * 1024,
-  clientTotal: 160 * 1024, // 0.5.0 放宽：主题库界面在按需加载的设置分块里，首屏入口不受影响
+  // 0.5.0 放宽到 160KB：主题库界面在按需加载的设置分块里，首屏入口不受影响
+  // 0.7.0 放宽到 260KB：Material 动态取色要带 Google 官方的配色算法（material-color-utilities，压缩后约 86KB），同样只在设置分块里
+  clientTotal: 260 * 1024,
   anyFile: 262144,
 }
 
@@ -61,7 +63,8 @@ async function buildClient(entry, chunk) {
 }
 
 /**
- * 打包 host 半。不压缩，出问题时看得懂堆栈。
+ * 打包 host 半。只去空白、简化语法，不改名字：出问题时堆栈里的函数名还看得懂。
+ * （0.7.0 起带了官方配色算法，完全不压缩会超过单文件自查上限。）
  * @returns {Promise<string>} 文本
  */
 async function buildHost() {
@@ -73,6 +76,8 @@ async function buildHost() {
     format: 'esm',
     platform: 'node',
     target: 'node20',
+    minifyWhitespace: true,
+    minifySyntax: true,
     legalComments: 'none',
     charset: 'utf8',
     define,

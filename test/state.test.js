@@ -66,6 +66,13 @@ test('高级覆盖清洗：拒绝能跳出声明的值和奇怪的变量名', ()
   assert.deepEqual(Object.keys(clean), ['--dsw-alias-link', '--ok-gradient'])
 })
 
+test('高级覆盖清洗：单个值最多 1024 字（放得下复杂图标的路径），再长就丢', () => {
+  const path = (n) => `path("M${'1 2'.repeat(n)}")`
+  const clean = normalizeOverrides({ '--icon-ok': { light: path(330), dark: path(330) }, '--icon-long': { light: path(400), dark: path(400) } })
+  assert.ok(path(330).length <= 1024 && path(400).length > 1024)
+  assert.deepEqual(Object.keys(clean), ['--icon-ok'])
+})
+
 test('主题 id 清洗', () => {
   assert.equal(normalizeValues({ theme: 'mist' }).theme, 'mist')
   assert.equal(normalizeValues({ theme: '../evil' }).theme, null)

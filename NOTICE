@@ -5,6 +5,26 @@ MIT License, see LICENSE.
 致谢 / Acknowledgements
 -----------------------
 
+Material 动态取色用的是 Google 的 material-color-utilities 0.4.0（Apache License 2.0），
+打包在 lib/ 里（源码里的副本是 src/vendor/material-color-utilities.js）。许可证全文见
+licenses/material-color-utilities.txt。
+
+Material dynamic color uses Google's material-color-utilities 0.4.0 (Apache
+License 2.0), bundled into lib/ (the copy in the source tree is
+src/vendor/material-color-utilities.js). The full license text is in
+licenses/material-color-utilities.txt.
+
+示例主题 themes/material-3.json 里的图标路径，是把 Google 的 Material Symbols（圆角）
+（google/material-design-icons，Apache License 2.0）缩放取整得来的；开关手柄里的对勾和叉取自
+AOSP SettingsLib（Apache License 2.0）。许可证全文同上（licenses/material-color-utilities.txt
+就是 Apache License 2.0）。
+
+The icon paths in the example theme themes/material-3.json are scaled and
+rounded from Google's Material Symbols (Rounded) (google/material-design-icons,
+Apache License 2.0); the check and close marks in the switch thumb come from
+AOSP SettingsLib (Apache License 2.0). The license text is the same as above
+(licenses/material-color-utilities.txt is the Apache License 2.0).
+
 配色思路参考了 dsh-dream-skin（MIT）：用 OKLCH 明度阶梯生成表面色，再用 WCAG / APCA
 对比度求解调整文字色。棱镜的代码全部重写，没有复制 dsh-dream-skin 的源代码。
 

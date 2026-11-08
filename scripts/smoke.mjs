@@ -554,12 +554,13 @@ async function runCustom(hostDir, port) {
     await typeInto(page, '[data-prism-save-name]', '烟测主题·改')
     await clickSel(page, '[data-prism-save]')
     check('我的主题：改名后列表和当前主题条都是新名字', await waitFor(async () => (await value('library'))?.[0]?.name === '烟测主题·改' && (await currentName()) === '烟测主题·改' && (await value('theme')) === mineTheme))
-    // 悬停预览带上主题自带的 CSS：悬停在没有 CSS 的主题上，自定义 CSS 暂时撤掉；移开就回来
+    // 悬停不预览：停在别的主题上，界面（变量和主题自带的 CSS）都不动
+    const styleBefore = await page.evaluate('document.body.getAttribute("style")')
     await page.hover('[data-prism-theme="mist"]')
-    const previewed = await waitFor(async () => (await cssTags()) === 0, 3000)
+    await sleep(400)
+    const still = (await cssTags()) === 1 && (await page.evaluate('document.body.getAttribute("style")')) === styleBefore
     await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 3, y: 3 })
-    const back = await waitFor(async () => (await cssTags()) === 1, 3000)
-    check('悬停预览：连主题自带的 CSS 一起预览，移开就恢复', previewed && back && (await value('theme')) === mineTheme)
+    check('悬停不预览：停在别的主题上，变量和主题 CSS 都不变', still && (await value('theme')) === mineTheme)
     // 删除：点两次；删了可以撤销
     await clickSel(page, `[data-prism-delete-mine="${mine?.id}"]`)
     await sleep(200)

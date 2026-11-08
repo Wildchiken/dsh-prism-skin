@@ -2,6 +2,7 @@
  * 引擎入口：把「主题 → 我的调整 → 高级覆盖」三层合成最终变量，有壁纸时再叠上玻璃。
  */
 import { generate } from './generate.js'
+import { materialTokens } from './material.js'
 import { BASE_SEED, THEMES, themeById } from './themes.js'
 import { colorWall } from './wall.js'
 import { packOf } from '../shared/state.js'
@@ -11,6 +12,7 @@ export { BASE_SEED, THEMES, themeById } from './themes.js'
 export { CODE_SCHEMES, codeSchemeById } from './code.js'
 export { effectiveCss, PACK_PREFIX, packOf } from '../shared/state.js'
 export { colorWall, GRADIENTS, gradientWall, imageWall, seedFromWall, SOLIDS, stopsDerived } from './wall.js'
+export { materialRoles, materialTokens } from './material.js'
 
 /** 自定义种子对应的主题 id。 */
 export const CUSTOM_THEME = 'custom'
@@ -78,8 +80,10 @@ export function resolveTokens(values) {
 export function resolveLayer(values, wall) {
   const seed = seedOf(values)
   const pack = packOf(values)
-  // 主题自带的覆盖算主题的一部分，用户自己的覆盖再盖在上面
-  const overrides = pack?.overrides === undefined ? values.overrides : { ...pack.overrides, ...values.overrides }
+  // 主题自带的 Material 规则按当前强调色现算（用户换强调色，整套跟着变）；
+  // 然后是主题自带的覆盖，用户自己的覆盖再盖在最上面
+  const dynamic = pack?.material !== undefined && seed?.accent !== undefined ? materialTokens(pack.material, seed.accent) : undefined
+  const overrides = pack?.overrides === undefined && dynamic === undefined ? values.overrides : { ...dynamic, ...pack?.overrides, ...values.overrides }
   const hasOverrides = Object.keys(overrides).length > 0
   const radius = radiusTokens(values.radius ?? pack?.radius ?? null)
   if (seed === undefined && !hasOverrides && Object.keys(radius).length === 0) return { tokens: null, opaque: null, wall: null }

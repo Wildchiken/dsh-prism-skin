@@ -4,6 +4,42 @@
 
 All versions up to 0.3.1 were never published; they were used only for local testing and on the desktop app.
 
+## [0.7.0] - 2026-11-08
+
+### 新增
+
+- 示例主题 Material 3（`themes/material-3.json`）：配色用 Material 动态取色跟着强调色变；组件尺寸、圆角、状态层、动效照 material-web 和安卓 16 设置页（AOSP SettingsLib）；宿主的图标全部换成 Material Symbols；Google Sans 字体（要本机装了才有）。生成脚本在 `themes/src/`。
+- Material 动态取色：主题文件和「我的主题」可以带 `material` 字段，写「宿主变量 → Material 3 配色角色」的对应关系（例如 `"--dsw-alias-bg-base": "surface"`、`"--m3-hover": "onSurface/8"`）。选中这样的主题时，棱镜用 Google 官方的 material-color-utilities（Apache-2.0）按当前强调色现算整套配色，换强调色整套跟着变，和安卓的 Material You 一样。可选方案：tonal（安卓默认）、vibrant、expressive、fidelity、content、neutral、monochrome、rainbow、fruit-salad；规格 2021 或 2025。
+- 当前主题带 Material 动态取色时，侧栏面板里直接出一排强调色。
+- 按压位置：主题在要出涟漪的元素上写 `--prism-ripple: 1`，按下时棱镜在这个元素上写 `--prism-x` / `--prism-y`（按下点相对元素左上角的距离），主题的伪元素用 `left: var(--prism-x, 50%)` 就能从按下的地方扩散，像安卓的水波纹；键盘触发时没有坐标，从中心开始。
+- `scripts/audit-theme.mjs`：主题体检。在隔离的真宿主里用会调工具的假模型造一段对话，逐个画面（对话、轨迹、插件、各个菜单、右侧栏、设置每一页）亮暗各看一遍：同一个元素有无主题时比较折行、截断、消失、重叠，主题下查对比度、圆角档位、图标和字体，再逐个元素悬停看会不会动。中英文界面都能跑（`--locale`）。
+
+### 改动
+
+- 变量覆盖的单个值上限从 400 字放宽到 1024 字：主题换图标时要把整条图标路径写进变量，Material Symbols 里齿轮、太阳、分享这类复杂图标压缩后仍有 400～650 字。
+- 示例主题赛博朋克 HUD：未选中的标签页文字对比度从 4.41 调到 4.5 以上；亮色下轨迹页「助手」标签改用正文色（原来 3.2:1）。生成脚本收进 `themes/src/cyberpunk-hud.mjs`。
+- 去掉悬停预览（设置页主题画廊、侧栏面板的主题圆点、代码配色）：悬停会把整套界面换掉，带字体、图标、尺寸的主题一换，鼠标下面的东西跟着移动，鼠标就落到另一个主题上，来回闪。现在点了才换，悬停只显示名字。拖动滑块时的实时预览保留。
+- 自定义 CSS（包括主题自带的）上限从 8192 字符放宽到 16384：带完整设计语言的主题（比如 Material 3）8192 不够用。
+- 客户端分块合计的体积上限从 160 KB 放宽到 260 KB（实际 246 KB）：多出来的是官方配色算法，只在按需加载的设置分块里，开机加载的入口仍在 25 KB 以内。host 半改成去空白、简化语法（函数名不改），出问题时堆栈还看得懂。
+- 官方配色算法打包了一份进 `src/vendor/`（`node scripts/vendor-mcu.mjs` 生成），许可证全文在 `licenses/`，随包发布。
+
+### Added
+
+- Example theme Material 3 (`themes/material-3.json`): colors follow the accent through Material dynamic color; component sizes, shapes, state layers and motion follow material-web and the Android 16 settings app (AOSP SettingsLib); every host icon is replaced with Material Symbols; Google Sans fonts (if installed). The generator lives in `themes/src/`.
+- Material dynamic color: theme files and My themes can carry a `material` field that maps host variables to Material 3 color roles (e.g. `"--dsw-alias-bg-base": "surface"`, `"--m3-hover": "onSurface/8"`). When such a theme is selected, Prism computes the whole palette from the current accent with Google's material-color-utilities (Apache-2.0); changing the accent recolors everything, like Material You on Android. Schemes: tonal (Android default), vibrant, expressive, fidelity, content, neutral, monochrome, rainbow, fruit-salad; spec 2021 or 2025.
+- When the current theme uses Material dynamic color, the sidebar panel shows a row of accent swatches.
+- Press position: a theme marks ripple elements with `--prism-ripple: 1`; on press, Prism writes `--prism-x` / `--prism-y` (the press point relative to the element's top-left corner) on that element, so a pseudo-element with `left: var(--prism-x, 50%)` spreads from where you pressed, like the Android ripple. Keyboard activation has no coordinates and starts from the center.
+- `scripts/audit-theme.mjs`: a theme audit. It seeds a conversation in an isolated real host with a mock model that calls tools, then walks every screen (chat, trajectory, plugins, each menu, right sidebar, every settings page) in light and dark: the same element with and without the theme is compared for wrapping, truncation, disappearing and overlap; under the theme it checks contrast, corner radii, icons and fonts; then it hovers every element to see whether anything moves. Runs on the Chinese or English UI (`--locale`).
+
+### Changed
+
+- A single override value can now be 1024 characters (was 400): themes that replace icons put the whole icon path into a variable, and complex Material Symbols (settings gear, sun, share) are still 400–650 characters after compression.
+- Example theme Cyberpunk HUD: unselected tab labels go from 4.41 to above 4.5 contrast; in light mode the trajectory "Assistant" tag uses the body text color (was 3.2:1). Its generator now lives in `themes/src/cyberpunk-hud.mjs`.
+- Hover preview is gone (settings gallery, sidebar panel theme dots, code colors): hovering swapped the whole interface, and with themes that change fonts, icons and sizes the content moved under the pointer, landing it on another theme and flickering back and forth. Themes now change on click; hovering only shows the name. Live preview while dragging sliders stays.
+- The custom CSS limit (including a theme's own CSS) goes from 8192 to 16384 characters: themes with a full design language (like Material 3) need more than 8192.
+- The size limit for all client chunks goes from 160 KB to 260 KB (actual 246 KB). The extra is the official color algorithm, only in the lazily loaded settings chunk; the startup entry stays under 25 KB. The host half is now whitespace- and syntax-minified (names kept), so stack traces stay readable.
+- A copy of the official color library is bundled into `src/vendor/` (generated by `node scripts/vendor-mcu.mjs`); its full license is in `licenses/` and ships with the package.
+
 ## [0.6.0] - 2026-11-07
 
 ### 新增

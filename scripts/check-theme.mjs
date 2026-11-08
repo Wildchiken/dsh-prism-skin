@@ -5,7 +5,7 @@
  *
  * 用法：node scripts/check-theme.mjs --host <装了 @deepseek-ai/dsh 的目录> --theme themes/cyberpunk-hud.json [--port 18765]
  *
- * 会依次打开对话页、设置窗、斜杠菜单、模型菜单，每个选择器只要在其中一处匹配到就算通过。
+ * 会依次打开对话页、轨迹页、设置窗、斜杠菜单、模型菜单，每个选择器只要在其中一处匹配到就算通过。
  * 宿主跑在隔离的临时环境里（临时 DSH_HOME、主目录、时区），用本机假模型，不联网。
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -72,6 +72,13 @@ try {
   await sleep(600)
   console.log(`检查「${theme.name ?? args.theme}」里的 ${selectors.length} 个宿主选择器：`)
   await collect('对话页')
+
+  // 轨迹页（类型标签、时间轴这些只在这里）
+  await page.evaluate(() => [...document.querySelectorAll('[role=tab]')].find((t) => /Trajectory|轨迹/.test(t.textContent))?.click())
+  await sleep(1200)
+  await collect('轨迹页')
+  await page.evaluate(() => [...document.querySelectorAll('[role=tab]')].find((t) => /^(Chat|对话)/.test(t.textContent.trim()))?.click())
+  await sleep(600)
 
   // 设置窗（通用设置页有开关）
   await page.evaluate(() => document.querySelector('[data-slot="settings.launcher"] button')?.click())
